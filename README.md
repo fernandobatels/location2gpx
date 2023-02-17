@@ -1,2 +1,3 @@
 # location2gpx
-GPX file generator 
+
+GPX file generator
