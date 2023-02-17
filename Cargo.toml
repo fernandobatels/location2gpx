@@ -2,7 +2,25 @@
 name = "location2gpx"
 version = "0.1.0"
 edition = "2021"
+authors = ["Luis Fernando Batels <luisfbatels@gmail.com>"]
+description = "GPX file generator"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+argopt = { version = "0.3.0", optional = true }
+chrono = "0.4.23"
+geo = "0.23.1"
+gpx = "0.8.6"
+
+[features]
+default = ["cli"]
+cli = ["dep:argopt"]
+
+[[bin]]
+name = "location2gpx"
+required-features = ["cli"]
+
+[lib]
+name = "location2gpx"
+crate-type = ["lib"]
