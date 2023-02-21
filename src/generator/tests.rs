@@ -1,10 +1,12 @@
 
-use time::OffsetDateTime;
+use std::fs;
+
 use time::macros::{datetime};
 use geo::Point;
 
 use super::position::RawPosition;
 use super::tracker::Tracker;
+use super::gpx::GpxGenerator;
 
 #[test]
 fn simple_track() -> Result<(), String> {
@@ -52,6 +54,32 @@ fn simple_track_reversed() -> Result<(), String> {
     assert_eq!(Some(p2.time.into()), segment.points[1].time);
     assert_eq!(p3.coordinates, segment.points[2].point());
     assert_eq!(Some(p3.time.into()), segment.points[2].time);
+
+    Ok(())
+}
+
+#[test]
+fn simple_gpx() -> Result<(), String> {
+
+    let p1 = RawPosition::basic(Point::new(-48.8702222, -26.31832), datetime!(2021-05-24 0:00 UTC));
+    let p2 = RawPosition::basic(Point::new(-48.8619776, -26.3185919), datetime!(2021-05-24 0:05 UTC));
+    let p3 = RawPosition::basic(Point::new(-48.8619871, -26.3185861), datetime!(2021-05-24 0:10 UTC));
+
+    let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
+        .build(vec![&p1, &p2, &p3])?;
+
+    let mut gpx = GpxGenerator::empty();
+    gpx.tracks.push(track);
+
+    let doc = gpx.generate()?;
+
+    let mut bdoc: Vec<u8> = Vec::new();
+    gpx::write(&doc, &mut bdoc).map_err(|e| e.to_string())?;
+    let doc = String::from_utf8(bdoc).map_err(|e| e.to_string())?;
+
+    let edoc = fs::read_to_string("samples/simple.gpx").map_err(|e| e.to_string())?;
+
+    assert_eq!(edoc.lines().collect::<String>(), doc.lines().collect::<String>());
 
     Ok(())
 }

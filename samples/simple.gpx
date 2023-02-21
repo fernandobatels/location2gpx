@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1" creator="location2gpx">
+  <trk>
+    <name>running in joinville</name>
+    <desc>Tracked by `my dev 1`</desc>
+    <trkseg>
+      <trkpt lat="-26.31832" lon="-48.8702222">
+        <time>2021-05-24T00:00:00Z</time>
+      </trkpt>
+      <trkpt lat="-26.3185919" lon="-48.8619776">
+        <time>2021-05-24T00:05:00Z</time>
+      </trkpt>
+      <trkpt lat="-26.3185861" lon="-48.8619871">
+        <time>2021-05-24T00:10:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

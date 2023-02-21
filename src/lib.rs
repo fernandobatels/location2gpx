@@ -4,4 +4,4 @@ mod generator;
 
 pub use generator::position::RawPosition;
 pub use generator::tracker::Tracker;
-pub use generator::gpx::GpxBuilder;
+pub use generator::gpx::GpxGenerator;
