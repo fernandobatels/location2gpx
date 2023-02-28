@@ -1,7 +1,12 @@
 //! Track generator API
 
+use std::collections::BTreeMap;
+
 use gpx::{Track, TrackSegment, Waypoint};
-use super::position::RawPosition;
+use time::{macros::format_description, OffsetDateTime};
+
+use super::position::{DevicePosition, RawPosition};
+use crate::PositionsSource;
 
 pub struct Tracker {
     /// Device name, number...
@@ -15,23 +20,18 @@ pub struct Tracker {
 }
 
 impl Tracker {
-
     /// Start a new tracker instance
     pub fn new(device: String, name: String) -> Self {
         Self {
             device,
             name,
             source: None,
-            max_segment_duration: 5 // 5 minutes
+            max_segment_duration: 5, // 5 minutes
         }
     }
 
     pub fn max_segment(&mut self, max: u8) -> &mut Self {
-        self.max_segment_duration = if max < 1 {
-            1
-        } else {
-            max
-        };
+        self.max_segment_duration = if max < 1 { 1 } else { max };
 
         self
     }
@@ -54,7 +54,6 @@ impl Tracker {
         let mut positions = positions.clone();
         positions.sort_by_key(|p| p.time);
         for poi in positions {
-
             let mut wp = Waypoint::new(poi.coordinates);
             wp.time = Some(poi.time.into());
 
@@ -64,5 +63,58 @@ impl Tracker {
         track.segments.push(tseg);
 
         Ok(track)
+    }
+}
+
+/// Default tracks generator from source
+pub struct SourceToTracks {}
+
+impl SourceToTracks {
+    /// Run the source and build the tracks
+    pub fn build<SU>(
+        mut source: SU,
+        start: OffsetDateTime,
+        end: OffsetDateTime,
+    ) -> Result<Vec<Track>, String>
+    where
+        SU: PositionsSource,
+    {
+        let mut devices: BTreeMap<(String, String), Vec<DevicePosition>> = BTreeMap::new();
+        let mut tracks = vec![];
+        let route_day_format = format_description!("[year]-[month]-[day]");
+
+        let positions = source.fetch(start, end)?;
+
+        for pos in positions {
+            let route = match pos.route_name.clone() {
+                Some(ro) => ro,
+                None => {
+                    let day = pos
+                        .pos
+                        .time
+                        .format(route_day_format)
+                        .map_err(|e| e.to_string())?;
+                    day
+                }
+            };
+            let key = (pos.device_id.clone(), route);
+
+            let dev = devices.entry(key).or_insert(vec![]);
+            dev.push(pos);
+        }
+
+        for ((device_id, route_name), dev_pos) in devices {
+            let mut tracker = Tracker::new(device_id.clone(), route_name.clone());
+
+            if let Some(trk) = &dev_pos[0].tracker {
+                tracker.source(trk.to_string());
+            }
+
+            let raw = dev_pos.iter().map(|dpos| &dpos.pos).collect();
+            let track = tracker.build(raw)?;
+            tracks.push(track);
+        }
+
+        Ok(tracks)
     }
 }

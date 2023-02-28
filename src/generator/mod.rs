@@ -1,7 +1,7 @@
 //! Generation core
 
-pub mod position;
 pub mod gpx;
+pub mod position;
 pub mod tracker;
 
 #[cfg(test)]
