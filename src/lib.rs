@@ -1,7 +1,7 @@
 //! location2gpx - GPX generator from many location sources
 
 mod generator;
-mod sources;
+pub mod sources;
 
 pub use generator::gpx::GpxGenerator;
 pub use generator::position::{DevicePosition, RawPosition};

@@ -13,3 +13,8 @@ pub trait PositionsSource {
     ) -> Result<Vec<DevicePosition>, String>;
 }
 
+#[cfg(feature = "mongo")]
+mod mongo;
+
+#[cfg(feature = "mongo")]
+pub use mongo::MongoDbSource;
