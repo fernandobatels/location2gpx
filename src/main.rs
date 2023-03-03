@@ -32,6 +32,8 @@ fn main(
     flip_field_coordinates: Option<bool>,
     #[opt(long)]
     field_time: Option<String>,
+    #[opt(long)]
+    field_route: Option<String>,
 ) -> Result<(), String> {
 
     let start = OffsetDateTime::parse(&start, &well_known::Rfc3339)
@@ -60,6 +62,9 @@ fn main(
     }
     if let Some(f) = field_time {
         fields.time(f);
+    }
+    if let Some(f) = field_route {
+        fields.route(f);
     }
 
     let source = MongoDbSource::new(collection, Some(fields));

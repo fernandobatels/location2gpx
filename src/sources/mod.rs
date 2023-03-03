@@ -18,6 +18,7 @@ pub trait PositionsSource {
 pub struct FieldsBuilder {
     device_id: String,
     time: String,
+    route: String,
     coordinates: String,
     flip_coordinates: bool
 }
@@ -27,6 +28,7 @@ impl Default for FieldsBuilder {
         Self {
             device_id: "device".to_string(),
             time: "time".to_string(),
+            route: "route".to_string(),
             coordinates: "coordinates".to_string(),
             flip_coordinates: false
         }
@@ -43,6 +45,12 @@ impl FieldsBuilder {
     /// Change the time field name
     pub fn time<S: Into<String>>(&mut self, name: S) -> &mut Self {
         self.time = name.into();
+        self
+    }
+
+    /// Change the route field name
+    pub fn route<S: Into<String>>(&mut self, name: S) -> &mut Self {
+        self.route = name.into();
         self
     }
 

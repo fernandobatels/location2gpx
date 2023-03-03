@@ -112,7 +112,24 @@ fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, S
         None => Err("Time field not found".to_string())
     }?;
 
-    let dpos = DevicePosition::basic(device_id.clone(), Point::new(lng, lat), time);
+    let mut dpos = DevicePosition::basic(device_id.clone(), Point::new(lng, lat), time);
+
+    dpos.route_name = match doc.get(fields.route.clone()) {
+        Some(Bson::String(ro)) => Some(ro.clone()),
+        Some(Bson::Int32(ro)) => Some(ro.to_string()),
+        Some(Bson::Array(ro)) => {
+            if ro.len() > 0 {
+                match &ro[0] {
+                    Bson::String(di) => Some(di.clone()),
+                    Bson::Int32(di) => Some(di.to_string()),
+                    _ => None
+                }
+            } else {
+                None
+            }
+        },
+        _ => None
+    };
 
     Ok(dpos)
 }
@@ -299,6 +316,58 @@ pub mod tests {
         assert_eq!(1, track.segments.len());
         let segment = &track.segments[0];
         assert_eq!(1, segment.points.len());
+
+        Ok(())
+    }
+
+    #[test]
+    fn mongo_track_route_field() -> Result<(), String> {
+
+        let client = Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
+        let db = client.database("location2gpx_tests");
+        let collection = db.collection::<Document>("tracks");
+        collection.drop(None).map_err(|e| e.to_string())?;
+
+        let docs = vec![
+            doc! { "device": "AA251", "coordinates": [-48.8702222, -26.31832], "time": datetime!(2022-02-07 0:01 UTC), "route": ["01"] },
+            doc! { "device": "AA251", "coordinates": [-48.8802222, -26.31832], "time": datetime!(2022-02-07 0:02 UTC), "route": ["01", "02"] },
+            doc! { "device": "AA251", "coordinates": [-48.8902222, -26.31832], "time": datetime!(2022-02-07 0:03 UTC), "route": ["01"] },
+            doc! { "device": "AA251", "coordinates": [-48.8902222, -26.31832], "time": datetime!(2022-02-07 0:03 UTC), "route": Bson::Null },
+            doc! { "device": "AA251", "coordinates": [-48.8902222, -26.31832], "time": datetime!(2022-02-07 0:03 UTC), "route": "04" },
+            doc! { "device": "AA251", "coordinates": [-48.8702222, -26.31832], "time": datetime!(2022-02-07 0:01 UTC), "route": [12] },
+            doc! { "device": "AA251", "coordinates": [-48.8702222, -26.31832], "time": datetime!(2022-02-07 0:01 UTC), "route": 12 },
+        ];
+        collection.insert_many(docs, None).map_err(|e| e.to_string())?;
+
+        let source = MongoDbSource::new(collection, None);
+
+        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC))?;
+        assert_eq!(4, tracks.len());
+
+        let track = &tracks[0];
+        assert_eq!(1, track.segments.len());
+        assert_eq!(Some("01".to_string()), track.name);
+        let segment = &track.segments[0];
+        assert_eq!(3, segment.points.len());
+
+        let track = &tracks[1];
+        assert_eq!(1, track.segments.len());
+        assert_eq!(Some("04".to_string()), track.name);
+        let segment = &track.segments[0];
+        assert_eq!(1, segment.points.len());
+
+        let track = &tracks[2];
+        assert_eq!(1, track.segments.len());
+        assert_eq!(Some("12".to_string()), track.name);
+        let segment = &track.segments[0];
+        assert_eq!(2, segment.points.len());
+
+        let track = &tracks[3];
+        assert_eq!(1, track.segments.len());
+        assert_eq!(Some("2022-02-07".to_string()), track.name);
+        let segment = &track.segments[0];
+        assert_eq!(1, segment.points.len());
+
 
         Ok(())
     }
