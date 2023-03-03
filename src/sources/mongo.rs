@@ -38,7 +38,10 @@ impl PositionsSource for MongoDbSource {
         let filter = doc! {
             self.fields.time.clone(): doc! {
                 "$gte": DateTime::from_time_0_3(start),
-                "$lte": DateTime::from_time_0_3(end)
+                "$lte": DateTime::from_time_0_3(end),
+            },
+            self.fields.coordinates.clone(): doc! {
+                "$size": 2,
             }
         };
         let cursor = self.collection.find(filter, None)
@@ -109,7 +112,6 @@ fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, S
         None => Err("Time field not found".to_string())
     }?;
 
-
     let dpos = DevicePosition::basic(device_id.clone(), Point::new(lng, lat), time);
 
     Ok(dpos)
@@ -118,7 +120,7 @@ fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, S
 #[cfg(test)]
 pub mod tests {
     use mongodb::sync::Client;
-    use bson::{doc, Document};
+    use bson::{doc, Document, Bson};
     use time::macros::datetime;
     use geo::geometry::Point;
 
@@ -264,6 +266,34 @@ pub mod tests {
         let source = MongoDbSource::new(collection, Some(fields));
 
         let tracks = SourceToTracks::build(source, datetime!(2022-02-06 0:00 UTC), datetime!(2022-02-06 5:00 UTC))?;
+        assert_eq!(1, tracks.len());
+        let track = &tracks[0];
+        assert_eq!(1, track.segments.len());
+        let segment = &track.segments[0];
+        assert_eq!(1, segment.points.len());
+
+        Ok(())
+    }
+
+    #[test]
+    fn mongo_track_filter_out_failed_positions() -> Result<(), String> {
+
+        let client = Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
+        let db = client.database("location2gpx_tests");
+        let collection = db.collection::<Document>("tracks");
+        collection.drop(None).map_err(|e| e.to_string())?;
+
+        let docs = vec![
+            doc! { "device": "AA251", "coordinates": [-48.8702222, -26.31832], "time": datetime!(2022-02-06 0:01 UTC) },
+            doc! { "device": "AA251", "coordinates": Bson::Null, "time": datetime!(2022-02-07 0:01 UTC) },
+            doc! { "device": "AA251", "coordinates": [], "time": datetime!(2022-02-06 0:01 UTC) },
+            doc! { "device": "AA251", "time": datetime!(2022-02-03 0:01 UTC) },
+        ];
+        collection.insert_many(docs, None).map_err(|e| e.to_string())?;
+
+        let source = MongoDbSource::new(collection, None);
+
+        let tracks = SourceToTracks::build(source, datetime!(2022-01-06 0:00 UTC), datetime!(2022-03-06 5:00 UTC))?;
         assert_eq!(1, tracks.len());
         let track = &tracks[0];
         assert_eq!(1, track.segments.len());
