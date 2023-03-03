@@ -29,6 +29,8 @@ fn main(
     #[opt(long)]
     field_coordinates: Option<String>,
     #[opt(long)]
+    flip_field_coordinates: Option<bool>,
+    #[opt(long)]
     field_time: Option<String>,
 ) -> Result<(), String> {
 
@@ -52,6 +54,9 @@ fn main(
     }
     if let Some(f) = field_coordinates {
         fields.coordinates(f);
+    }
+    if let Some(f) = flip_field_coordinates {
+        fields.flip_coordinates(f);
     }
     if let Some(f) = field_time {
         fields.time(f);

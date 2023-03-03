@@ -78,11 +78,19 @@ fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, S
     if coordinates.len() != 2 {
         return Err("Coordinates size invalid".to_string());
     }
-    let lat = match coordinates[1] {
+
+    let mut ilat = 1;
+    let mut ilng = 0;
+    if fields.flip_coordinates {
+        ilat = 0;
+        ilng = 1;
+    }
+
+    let lat = match coordinates[ilat] {
         Bson::Double(l) => Ok(l),
         _ => Err("Invalid type of latitude".to_string())
     }?;
-    let lng = match coordinates[0] {
+    let lng = match coordinates[ilng] {
         Bson::Double(l) => Ok(l),
         _ => Err("Invalid type of longitude".to_string())
     }?;
@@ -112,6 +120,7 @@ pub mod tests {
     use mongodb::sync::Client;
     use bson::{doc, Document};
     use time::macros::datetime;
+    use geo::geometry::Point;
 
     use crate::{SourceToTracks, FieldsBuilder};
     use super::MongoDbSource;
@@ -125,9 +134,9 @@ pub mod tests {
         collection.drop(None).map_err(|e| e.to_string())?;
 
         let docs = vec![
-            doc! { "device": "AA251", "coordinates": [-48.8702222, -26.31832], "time": "2022-02-07T02:13:51Z" },
-            doc! { "device": "AA251", "coordinates": [-48.8802222, -26.31832], "time": "2022-02-07T02:13:55Z" },
-            doc! { "device": "AA251", "coordinates": [-48.8902222, -26.31832], "time": "2022-02-07T02:13:57Z" },
+            doc! { "device": "AA251", "coordinates": [-48.8702222, -26.31832], "time": datetime!(2022-02-07 0:01 UTC) },
+            doc! { "device": "AA251", "coordinates": [-48.8802222, -26.31832], "time": datetime!(2022-02-07 0:02 UTC) },
+            doc! { "device": "AA251", "coordinates": [-48.8902222, -26.31832], "time": datetime!(2022-02-07 0:03 UTC) },
         ];
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
@@ -142,6 +151,38 @@ pub mod tests {
         assert_eq!(Some("Tracked by `AA251`".to_string()), track.description);
         let segment = &track.segments[0];
         assert_eq!(3, segment.points.len());
+        assert_eq!(Point::new(-48.8702222, -26.31832), segment.points[0].point());
+
+        Ok(())
+    }
+
+    #[test]
+    fn mongo_track_flip_coordinates() -> Result<(), String> {
+
+        let client = Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
+        let db = client.database("location2gpx_tests");
+        let collection = db.collection::<Document>("tracks");
+        collection.drop(None).map_err(|e| e.to_string())?;
+
+        let docs = vec![
+            doc! { "device": "AA251", "coordinates": [-26.31832, -48.8702222], "time": datetime!(2022-02-07 0:01 UTC) },
+            doc! { "device": "AA251", "coordinates": [-26.31832, -48.8802222], "time": datetime!(2022-02-07 0:02 UTC) },
+            doc! { "device": "AA251", "coordinates": [-26.31832, -48.8902222], "time": datetime!(2022-02-07 0:03 UTC) },
+        ];
+        collection.insert_many(docs, None).map_err(|e| e.to_string())?;
+
+        let fields = FieldsBuilder::default()
+            .flip_coordinates(true)
+            .done();
+        let source = MongoDbSource::new(collection, Some(fields));
+
+        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC))?;
+        assert_eq!(1, tracks.len());
+        let track = &tracks[0];
+        assert_eq!(1, track.segments.len());
+        let segment = &track.segments[0];
+        assert_eq!(3, segment.points.len());
+        assert_eq!(Point::new(-48.8702222, -26.31832), segment.points[0].point());
 
         Ok(())
     }
@@ -182,9 +223,9 @@ pub mod tests {
         collection.drop(None).map_err(|e| e.to_string())?;
 
         let docs = vec![
-            doc! { "device": "AA251", "coordinates": [-48.8702222, -26.31832], "time": "2022-02-07T02:13:51Z" },
-            doc! { "device": "AA251", "coordinates": [-48.8802222, -26.31832], "time": "2022-02-06T02:13:55Z" },
-            doc! { "device": "AA251", "coordinates": [-48.8902222, -26.31832], "time": "2022-02-03T02:13:57Z" },
+            doc! { "device": "AA251", "coordinates": [-48.8702222, -26.31832], "time": datetime!(2022-02-07 0:01 UTC) },
+            doc! { "device": "AA251", "coordinates": [-48.8802222, -26.31832], "time": datetime!(2022-02-06 0:01 UTC) },
+            doc! { "device": "AA251", "coordinates": [-48.8902222, -26.31832], "time": datetime!(2022-02-03 0:01 UTC) },
         ];
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
@@ -209,9 +250,9 @@ pub mod tests {
         collection.drop(None).map_err(|e| e.to_string())?;
 
         let docs = vec![
-            doc! { "dev": "AA251", "coords": [-48.8702222, -26.31832], "dev_time": "2022-02-07T02:13:51Z" },
-            doc! { "dev": "AA251", "coords": [-48.8802222, -26.31832], "dev_time": "2022-02-06T02:13:55Z" },
-            doc! { "dev": "AA251", "coords": [-48.8902222, -26.31832], "dev_time": "2022-02-03T02:13:57Z" },
+            doc! { "dev": "AA251", "coords": [-48.8702222, -26.31832], "dev_time": datetime!(2022-02-07 0:01 UTC) },
+            doc! { "dev": "AA251", "coords": [-48.8802222, -26.31832], "dev_time": datetime!(2022-02-06 0:01 UTC) },
+            doc! { "dev": "AA251", "coords": [-48.8902222, -26.31832], "dev_time": datetime!(2022-02-03 0:01 UTC) },
         ];
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
