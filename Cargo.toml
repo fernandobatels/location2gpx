@@ -12,12 +12,13 @@ argopt = { version = "0.3.0", optional = true }
 geo = "0.23.1"
 gpx = "0.8.6"
 mongodb = { version = "2.3.1", optional = true, features = ["tokio-sync"] }
+bson = { version = "2.5.0", optional = true, features = ["time-0_3"] }
 time = { version = "0.3.19", features = ["macros"] }
 
 [features]
 default = ["cli", "mongo"]
 cli = ["dep:argopt"]
-mongo = ["dep:mongodb"]
+mongo = ["dep:mongodb", "dep:bson"]
 
 [[bin]]
 name = "location2gpx"

@@ -1,6 +1,6 @@
 //! Mongodb source integration
 
-use mongodb::bson::{doc, Document, Bson};
+use bson::{doc, Document, Bson, DateTime};
 use mongodb::sync::Collection;
 use time::format_description::well_known;
 use time::OffsetDateTime;
@@ -37,8 +37,8 @@ impl PositionsSource for MongoDbSource {
 
         let filter = doc! {
             self.fields.time.clone(): doc! {
-                "$gte": start.format(&well_known::Rfc3339).map_err(|e| e.to_string())?,
-                "$lte": end.format(&well_known::Rfc3339).map_err(|e| e.to_string())?
+                "$gte": DateTime::from_time_0_3(start),
+                "$lte": DateTime::from_time_0_3(end)
             }
         };
         let cursor = self.collection.find(filter, None)
@@ -64,8 +64,14 @@ impl PositionsSource for MongoDbSource {
 
 fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, String> {
 
-    let device_id = doc.get_str(fields.device_id.clone())
-        .map_err(|e| format!("Failed on access the `device`: {}", e.to_string()))?;
+    let device_id = match doc.get(fields.device_id.clone()) {
+        Some(Bson::String(di)) => Ok(di.clone()),
+        Some(Bson::Int32(di)) => Ok(di.to_string()),
+        Some(Bson::Int64(di)) => Ok(di.to_string()),
+        Some(Bson::Double(di)) => Ok(di.to_string()),
+        Some(_) => Err("Device field type not supported"),
+        None => Err("Device field not found")
+    }?;
 
     let coordinates = doc.get_array(fields.coordinates.clone())
         .map_err(|e| format!("Failed on access the `coordinates`: {}", e.to_string()))?;
@@ -81,12 +87,22 @@ fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, S
         _ => Err("Invalid type of longitude".to_string())
     }?;
 
-    let stime = doc.get_str(fields.time.clone())
-        .map_err(|e| format!("Failed on access the `time`: {}", e.to_string()))?;
-    let time = OffsetDateTime::parse(stime, &well_known::Rfc3339)
-        .map_err(|e| format!("Failed on parse the time: {}", e.to_string()))?;
+    let time = match doc.get(fields.time.clone()) {
+        Some(Bson::String(tm)) => {
+            OffsetDateTime::parse(tm, &well_known::Rfc3339)
+                .map_err(|e| format!("Failed on parse the time: {}", e.to_string()))
+        },
+        Some(Bson::DateTime(tm)) => Ok(tm.to_time_0_3()),
+        Some(Bson::Timestamp(tm)) => {
+            OffsetDateTime::from_unix_timestamp(tm.time.into())
+                .map_err(|e| format!("Failed on parse the time tiemstamp: {}", e.to_string()))
+        },
+        Some(_) => Err("Time field type not supported".to_string()),
+        None => Err("Time field not found".to_string())
+    }?;
 
-    let dpos = DevicePosition::basic(device_id.to_string(), Point::new(lng, lat), time);
+
+    let dpos = DevicePosition::basic(device_id.clone(), Point::new(lng, lat), time);
 
     Ok(dpos)
 }
@@ -94,7 +110,7 @@ fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, S
 #[cfg(test)]
 pub mod tests {
     use mongodb::sync::Client;
-    use mongodb::bson::{doc, Document};
+    use bson::{doc, Document};
     use time::macros::datetime;
 
     use crate::{SourceToTracks, FieldsBuilder};
@@ -124,6 +140,33 @@ pub mod tests {
         assert_eq!(1, track.segments.len());
         assert_eq!(Some("2022-02-07".to_string()), track.name);
         assert_eq!(Some("Tracked by `AA251`".to_string()), track.description);
+        let segment = &track.segments[0];
+        assert_eq!(3, segment.points.len());
+
+        Ok(())
+    }
+
+    #[test]
+    fn mongo_track_others_fields_types() -> Result<(), String> {
+
+        let client = Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
+        let db = client.database("location2gpx_tests");
+        let collection = db.collection::<Document>("tracks");
+        collection.drop(None).map_err(|e| e.to_string())?;
+
+        let docs = vec![
+            doc! { "device": 251, "coordinates": [-48.8702222, -26.31832], "time": datetime!(2023-05-24 0:00 UTC) },
+            doc! { "device": 251, "coordinates": [-48.8802222, -26.31832], "time": datetime!(2023-05-24 0:00 UTC) },
+            doc! { "device": 251, "coordinates": [-48.8902222, -26.31832], "time": datetime!(2023-05-24 0:00 UTC) },
+        ];
+        collection.insert_many(docs, None).map_err(|e| e.to_string())?;
+
+        let source = MongoDbSource::new(collection, None);
+
+        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC))?;
+        assert_eq!(1, tracks.len());
+        let track = &tracks[0];
+        assert_eq!(1, track.segments.len());
         let segment = &track.segments[0];
         assert_eq!(3, segment.points.len());
 
@@ -175,7 +218,8 @@ pub mod tests {
         let fields = FieldsBuilder::default()
             .device("dev")
             .coordinates("coords")
-            .time("dev_time");
+            .time("dev_time")
+            .done();
         let source = MongoDbSource::new(collection, Some(fields));
 
         let tracks = SourceToTracks::build(source, datetime!(2022-02-06 0:00 UTC), datetime!(2022-02-06 5:00 UTC))?;

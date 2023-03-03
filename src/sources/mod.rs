@@ -14,6 +14,7 @@ pub trait PositionsSource {
 }
 
 /// Fields of source customization
+#[derive(Debug, Clone)]
 pub struct FieldsBuilder {
     device_id: String,
     time: String,
@@ -32,21 +33,25 @@ impl Default for FieldsBuilder {
 
 impl FieldsBuilder {
     /// Change the device id field name
-    pub fn device<S: Into<String>>(mut self, name: S) -> Self {
+    pub fn device<S: Into<String>>(&mut self, name: S) -> &mut Self {
         self.device_id = name.into();
         self
     }
 
     /// Change the time field name
-    pub fn time<S: Into<String>>(mut self, name: S) -> Self {
+    pub fn time<S: Into<String>>(&mut self, name: S) -> &mut Self {
         self.time = name.into();
         self
     }
 
     /// Change the coordinates field name
-    pub fn coordinates<S: Into<String>>(mut self, name: S) -> Self {
+    pub fn coordinates<S: Into<String>>(&mut self, name: S) -> &mut Self {
         self.coordinates = name.into();
         self
+    }
+
+    pub fn done(&mut self) -> Self {
+        self.clone()
     }
 }
 

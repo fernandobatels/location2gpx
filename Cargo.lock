@@ -808,6 +808,7 @@ name = "location2gpx"
 version = "0.1.0"
 dependencies = [
  "argopt",
+ "bson",
  "geo",
  "gpx",
  "mongodb",
