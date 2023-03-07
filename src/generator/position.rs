@@ -7,9 +7,12 @@ use time::OffsetDateTime;
 pub struct RawPosition {
     pub coordinates: Point,
     pub time: OffsetDateTime,
+    /// in m/s
     pub speed: Option<f64>,
-    pub precision: Option<f32>,
-    pub altitude: Option<f32>,
+    /// in m
+    pub precision: Option<f64>,
+    /// in m
+    pub altitude: Option<f64>,
 }
 
 impl RawPosition {

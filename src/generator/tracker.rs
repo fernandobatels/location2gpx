@@ -55,7 +55,10 @@ impl Tracker {
         positions.sort_by_key(|p| p.time);
         for poi in positions {
             let mut wp = Waypoint::new(poi.coordinates);
+
             wp.time = Some(poi.time.into());
+            wp.elevation = poi.altitude;
+            wp.speed = poi.speed;
 
             tseg.points.push(wp);
         }

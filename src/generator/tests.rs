@@ -262,3 +262,26 @@ fn source2tracks_with_rotes() -> Result<(), String> {
 
     Ok(())
 }
+
+#[test]
+fn speed_and_elevation_info() -> Result<(), String> {
+    let mut p1 = RawPosition::basic(
+        Point::new(-48.8702222, -26.31832),
+        datetime!(2021-05-24 0:00 UTC),
+    );
+    p1.altitude = Some(50.0);
+    p1.speed = Some(7.0);
+
+    let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
+        .build(vec![&p1])?;
+    assert_eq!(1, track.segments.len());
+
+    let segment = &track.segments[0];
+    assert_eq!(1, segment.points.len());
+    assert_eq!(p1.coordinates, segment.points[0].point());
+    assert_eq!(Some(p1.time.into()), segment.points[0].time);
+    assert_eq!(Some(7.0), segment.points[0].speed);
+    assert_eq!(Some(50.0), segment.points[0].elevation);
+
+    Ok(())
+}
