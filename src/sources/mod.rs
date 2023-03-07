@@ -20,6 +20,8 @@ pub struct FieldsBuilder {
     time: String,
     route: String,
     coordinates: String,
+    speed: String,
+    elevation: String,
     flip_coordinates: bool
 }
 
@@ -30,6 +32,8 @@ impl Default for FieldsBuilder {
             time: "time".to_string(),
             route: "route".to_string(),
             coordinates: "coordinates".to_string(),
+            speed: "speed".to_string(),
+            elevation: "elevation".to_string(),
             flip_coordinates: false
         }
     }
@@ -57,6 +61,18 @@ impl FieldsBuilder {
     /// Change the coordinates field name
     pub fn coordinates<S: Into<String>>(&mut self, name: S) -> &mut Self {
         self.coordinates = name.into();
+        self
+    }
+
+    /// Change the speed field name
+    pub fn speed<S: Into<String>>(&mut self, name: S) -> &mut Self {
+        self.speed = name.into();
+        self
+    }
+
+    /// Change the elevation field name
+    pub fn elevation<S: Into<String>>(&mut self, name: S) -> &mut Self {
+        self.elevation = name.into();
         self
     }
 

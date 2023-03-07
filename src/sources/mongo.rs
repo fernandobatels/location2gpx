@@ -131,6 +131,18 @@ fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, S
         _ => None
     };
 
+    dpos.pos.speed = match doc.get(fields.speed.clone()) {
+        Some(Bson::Int32(sp)) => Some((*sp).into()),
+        Some(Bson::Double(sp)) => Some((*sp).into()),
+        _ => None
+    };
+
+    dpos.pos.altitude = match doc.get(fields.elevation.clone()) {
+        Some(Bson::Int32(sp)) => Some((*sp).into()),
+        Some(Bson::Double(sp)) => Some((*sp).into()),
+        _ => None
+    };
+
     Ok(dpos)
 }
 

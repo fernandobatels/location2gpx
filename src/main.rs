@@ -34,6 +34,10 @@ fn main(
     field_time: Option<String>,
     #[opt(long)]
     field_route: Option<String>,
+    #[opt(long)]
+    field_speed: Option<String>,
+    #[opt(long)]
+    field_elevation: Option<String>,
 ) -> Result<(), String> {
 
     let start = OffsetDateTime::parse(&start, &well_known::Rfc3339)
@@ -56,6 +60,12 @@ fn main(
     }
     if let Some(f) = field_coordinates {
         fields.coordinates(f);
+    }
+    if let Some(f) = field_elevation {
+        fields.elevation(f);
+    }
+    if let Some(f) = field_speed {
+        fields.speed(f);
     }
     if let Some(f) = flip_field_coordinates {
         fields.flip_coordinates(f);
