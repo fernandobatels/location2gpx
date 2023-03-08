@@ -16,11 +16,11 @@ fn simple_track() -> Result<(), String> {
     );
     let p2 = RawPosition::basic(
         Point::new(-48.8619776, -26.3185919),
-        datetime!(2021-05-24 0:05 UTC),
+        datetime!(2021-05-24 0:02 UTC),
     );
     let p3 = RawPosition::basic(
         Point::new(-48.8619871, -26.3185861),
-        datetime!(2021-05-24 0:10 UTC),
+        datetime!(2021-05-24 0:04 UTC),
     );
 
     let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
@@ -51,11 +51,11 @@ fn simple_track_reversed() -> Result<(), String> {
     );
     let p2 = RawPosition::basic(
         Point::new(-48.8619776, -26.3185919),
-        datetime!(2021-05-24 0:05 UTC),
+        datetime!(2021-05-24 0:01 UTC),
     );
     let p3 = RawPosition::basic(
         Point::new(-48.8619871, -26.3185861),
-        datetime!(2021-05-24 0:10 UTC),
+        datetime!(2021-05-24 0:02 UTC),
     );
 
     let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
@@ -82,11 +82,11 @@ fn simple_gpx() -> Result<(), String> {
     );
     let p2 = RawPosition::basic(
         Point::new(-48.8619776, -26.3185919),
-        datetime!(2021-05-24 0:05 UTC),
+        datetime!(2021-05-24 0:02 UTC),
     );
     let p3 = RawPosition::basic(
         Point::new(-48.8619871, -26.3185861),
-        datetime!(2021-05-24 0:10 UTC),
+        datetime!(2021-05-24 0:04 UTC),
     );
 
     let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
@@ -130,17 +130,17 @@ fn source2tracks() -> Result<(), String> {
             pos.push(DevicePosition::basic(
                 "dev 1".to_string(),
                 Point::new(-48.8619776, -26.3185919),
-                datetime!(2021-05-24 0:05 UTC),
+                datetime!(2021-05-24 0:01 UTC),
             ));
             pos.push(DevicePosition::basic(
                 "dev 1".to_string(),
                 Point::new(-48.8619871, -26.3185861),
-                datetime!(2021-05-24 0:10 UTC),
+                datetime!(2021-05-24 0:02 UTC),
             ));
             pos.push(DevicePosition::basic(
                 "dev 2".to_string(),
                 Point::new(-48.8619871, -26.3385861),
-                datetime!(2021-05-24 0:10 UTC),
+                datetime!(2021-05-24 0:02 UTC),
             ));
 
             Ok(pos)
@@ -282,6 +282,71 @@ fn speed_and_elevation_info() -> Result<(), String> {
     assert_eq!(Some(p1.time.into()), segment.points[0].time);
     assert_eq!(Some(7.0), segment.points[0].speed);
     assert_eq!(Some(50.0), segment.points[0].elevation);
+
+    Ok(())
+}
+
+#[test]
+fn time_segmented_track() -> Result<(), String> {
+    let times = vec![
+        datetime!(2021-05-24 0:00 UTC),
+        datetime!(2021-05-24 0:01 UTC),
+        datetime!(2021-05-24 0:02 UTC),
+        datetime!(2021-05-24 0:03 UTC),
+        datetime!(2021-05-24 0:04 UTC),
+
+        datetime!(2021-05-24 0:05 UTC),
+        datetime!(2021-05-24 0:06 UTC),
+        datetime!(2021-05-24 0:07 UTC),
+        datetime!(2021-05-24 0:08 UTC),
+        datetime!(2021-05-24 0:09 UTC),
+
+        datetime!(2021-05-24 0:17 UTC),
+        datetime!(2021-05-24 0:18 UTC),
+        datetime!(2021-05-24 0:19 UTC),
+
+        datetime!(2021-05-24 0:21 UTC),
+        datetime!(2021-05-24 0:22 UTC),
+        datetime!(2021-05-24 0:24 UTC),
+
+        datetime!(2021-05-24 1:21 UTC),
+    ];
+
+    let raw: Vec<RawPosition> = times.iter()
+        .map(|tm| RawPosition::basic(
+            Point::new(-48.8702222, -26.31832),
+            *tm
+        ))
+        .collect();
+    let pos = raw.iter().map(|p| p).collect();
+    let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
+        .build(pos)?;
+    assert_eq!(5, track.segments.len());
+
+    let segment = &track.segments[0];
+    assert_eq!(5, segment.points.len());
+    assert_eq!(Some(datetime!(2021-05-24 0:00 UTC).into()), segment.points[0].time);
+    assert_eq!(Some(datetime!(2021-05-24 0:04 UTC).into()), segment.points[4].time);
+
+    let segment = &track.segments[1];
+    assert_eq!(5, segment.points.len());
+    assert_eq!(Some(datetime!(2021-05-24 0:05 UTC).into()), segment.points[0].time);
+    assert_eq!(Some(datetime!(2021-05-24 0:09 UTC).into()), segment.points[4].time);
+
+    let segment = &track.segments[2];
+    assert_eq!(3, segment.points.len());
+    assert_eq!(Some(datetime!(2021-05-24 0:17 UTC).into()), segment.points[0].time);
+    assert_eq!(Some(datetime!(2021-05-24 0:19 UTC).into()), segment.points[2].time);
+
+    let segment = &track.segments[3];
+    assert_eq!(3, segment.points.len());
+    assert_eq!(Some(datetime!(2021-05-24 0:21 UTC).into()), segment.points[0].time);
+    assert_eq!(Some(datetime!(2021-05-24 0:24 UTC).into()), segment.points[2].time);
+
+    let segment = &track.segments[4];
+    assert_eq!(1, segment.points.len());
+    assert_eq!(Some(datetime!(2021-05-24 1:21 UTC).into()), segment.points[0].time);
+    assert_eq!(Some(datetime!(2021-05-24 1:21 UTC).into()), segment.points[0].time);
 
     Ok(())
 }

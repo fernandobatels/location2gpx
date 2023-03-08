@@ -49,11 +49,18 @@ impl Tracker {
         track.description = Some(format!("Tracked by `{}`", self.device.clone()));
         track.source = self.source.clone();
 
-        let mut tseg = TrackSegment::new();
-
         let mut positions = positions.clone();
         positions.sort_by_key(|p| p.time);
+
+        let mut segs: BTreeMap<i64, TrackSegment> = BTreeMap::new();
+
+        // We make small segments of tracks rounding
+        // the times to the closest 5min sloot
         for poi in positions {
+            let key = ((poi.time.unix_timestamp() as f64 / 300f64).floor() * 300f64) as i64;
+
+            let tseg = segs.entry(key).or_insert_with(|| TrackSegment::new());
+
             let mut wp = Waypoint::new(poi.coordinates);
 
             wp.time = Some(poi.time.into());
@@ -63,7 +70,9 @@ impl Tracker {
             tseg.points.push(wp);
         }
 
-        track.segments.push(tseg);
+        for (_,tseg) in segs {
+            track.segments.push(tseg);
+        }
 
         Ok(track)
     }
