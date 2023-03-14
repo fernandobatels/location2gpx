@@ -350,3 +350,34 @@ fn time_segmented_track() -> Result<(), String> {
 
     Ok(())
 }
+
+#[test]
+fn simplify_track() -> Result<(), String> {
+    let locs = vec![
+        Point::new(5.0, 2.0),
+        Point::new(3.0, 8.0),
+        Point::new(6.0, 20.0),
+        Point::new(7.0, 25.0),
+        Point::new(10.0, 10.0),
+    ];
+
+    let raw: Vec<RawPosition> = locs.iter()
+        .map(|loc| RawPosition::basic(
+            *loc,
+            datetime!(2021-05-24 0:00 UTC),
+        ))
+        .collect();
+    let pos = raw.iter().map(|p| p).collect();
+    let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
+        .simplify_with_vw(30.0)
+        .build(pos)?;
+    assert_eq!(1, track.segments.len());
+
+    let segment = &track.segments[0];
+    assert_eq!(3, segment.points.len());
+    assert_eq!(Point::new(5.0, 2.0), segment.points[0].point());
+    assert_eq!(Point::new(7.0, 25.0), segment.points[1].point());
+    assert_eq!(Point::new(10.0, 10.0), segment.points[2].point());
+
+    Ok(())
+}

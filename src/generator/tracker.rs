@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use geo::SimplifyVwIdx;
 use gpx::{Track, TrackSegment, Waypoint};
 use time::{macros::format_description, OffsetDateTime};
 
@@ -17,6 +18,8 @@ pub struct Tracker {
     pub max_segment_duration: u8,
     /// Data source, eg.: track app
     pub source: Option<String>,
+    /// Tolerance value to simplify with Visvalingam-Whyatt algorithm
+    pub vw_tolerance: Option<f64>
 }
 
 impl Tracker {
@@ -27,15 +30,25 @@ impl Tracker {
             name,
             source: None,
             max_segment_duration: 5, // 5 minutes
+            vw_tolerance: None,
         }
     }
 
+    /// Enable the simplification with Visvalingam-Whyatt algorithm
+    pub fn simplify_with_vw(&mut self, tolerance: f64) -> &mut Self {
+        self.vw_tolerance = Some(tolerance);
+
+        self
+    }
+
+    /// Max time segment allowed. In minutes.
     pub fn max_segment(&mut self, max: u8) -> &mut Self {
         self.max_segment_duration = if max < 1 { 1 } else { max };
 
         self
     }
 
+    /// App or other source name of data
     pub fn source(&mut self, source: String) -> &mut Self {
         self.source = Some(source);
 
@@ -70,8 +83,23 @@ impl Tracker {
             tseg.points.push(wp);
         }
 
-        for (_,tseg) in segs {
-            track.segments.push(tseg);
+        for (_, tseg) in segs {
+
+            if let Some(tol) = self.vw_tolerance {
+
+                let keep = tseg.linestring()
+                    .simplify_vw_idx(&tol);
+
+                let mut ntseg = TrackSegment::new();
+
+                for ipoint in keep {
+                    ntseg.points.push(tseg.points[ipoint].clone());
+                }
+
+                track.segments.push(ntseg);
+            } else {
+                track.segments.push(tseg);
+            }
         }
 
         Ok(track)
