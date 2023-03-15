@@ -8,7 +8,7 @@ use bson::{doc, Document};
 use time::format_description::well_known;
 use time::OffsetDateTime;
 
-use location2gpx::{SourceToTracks, FieldsBuilder, GpxGenerator};
+use location2gpx::{SourceToTracks, FieldsBuilder, GpxGenerator, TrackSegmentOptions};
 use location2gpx::sources::MongoDbSource;
 
 /// CLI of location2gpx - Convert your raw GPS data into a GPX file
@@ -38,6 +38,12 @@ fn main(
     field_speed: Option<String>,
     #[opt(long)]
     field_elevation: Option<String>,
+    /// Enable the simplify Visvalingam-Whyatt algorithm providing the tolerance
+    #[opt(long)]
+    simplify: Option<f64>,
+    /// Max segment time(in seconds) allowed
+    #[opt(long)]
+    max_seg_time: Option<u16>,
 ) -> Result<(), String> {
 
     let start = OffsetDateTime::parse(&start, &well_known::Rfc3339)
@@ -79,7 +85,16 @@ fn main(
 
     let source = MongoDbSource::new(collection, Some(fields));
 
-    let tracks = SourceToTracks::build(source, start, end)?;
+    let mut op = TrackSegmentOptions::new();
+
+    if let Some(s) = max_seg_time {
+        op.max_segment_secs(s);
+    }
+    if let Some(s) = simplify {
+        op.simplify_with_vw(s);
+    }
+
+    let tracks = SourceToTracks::build(source, start, end, op)?;
 
     let mut gpx = GpxGenerator::empty();
     gpx.tracks = tracks;

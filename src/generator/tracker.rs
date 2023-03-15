@@ -11,15 +11,12 @@ use crate::PositionsSource;
 
 pub struct Tracker {
     /// Device name, number...
-    pub device: String,
+    device: String,
     /// Route/Track/Category name, number...
-    pub name: String,
-    /// Max segment duration in minutes
-    pub max_segment_duration: u8,
+    name: String,
     /// Data source, eg.: track app
-    pub source: Option<String>,
-    /// Tolerance value to simplify with Visvalingam-Whyatt algorithm
-    pub vw_tolerance: Option<f64>
+    source: Option<String>,
+    segment_confs: TrackSegmentOptions,
 }
 
 impl Tracker {
@@ -29,21 +26,13 @@ impl Tracker {
             device,
             name,
             source: None,
-            max_segment_duration: 5, // 5 minutes
-            vw_tolerance: None,
+            segment_confs: TrackSegmentOptions::new()
         }
     }
 
-    /// Enable the simplification with Visvalingam-Whyatt algorithm
-    pub fn simplify_with_vw(&mut self, tolerance: f64) -> &mut Self {
-        self.vw_tolerance = Some(tolerance);
-
-        self
-    }
-
-    /// Max time segment allowed. In minutes.
-    pub fn max_segment(&mut self, max: u8) -> &mut Self {
-        self.max_segment_duration = if max < 1 { 1 } else { max };
+    /// Change the segment confs
+    pub fn configure_segments(&mut self, conf: &TrackSegmentOptions) -> &mut Self {
+        self.segment_confs = (*conf).clone();
 
         self
     }
@@ -69,8 +58,9 @@ impl Tracker {
 
         // We make small segments of tracks rounding
         // the times to the closest 5min sloot
+        let max_time = self.segment_confs.max_duration as f64;
         for poi in positions {
-            let key = ((poi.time.unix_timestamp() as f64 / 300f64).floor() * 300f64) as i64;
+            let key = ((poi.time.unix_timestamp() as f64 / max_time).floor() * max_time) as i64;
 
             let tseg = segs.entry(key).or_insert_with(|| TrackSegment::new());
 
@@ -85,7 +75,7 @@ impl Tracker {
 
         for (_, tseg) in segs {
 
-            if let Some(tol) = self.vw_tolerance {
+            if let Some(tol) = self.segment_confs.vw_tolerance {
 
                 let keep = tseg.linestring()
                     .simplify_vw_idx(&tol);
@@ -106,6 +96,38 @@ impl Tracker {
     }
 }
 
+/// Segments configurations
+#[derive(Clone)]
+pub struct TrackSegmentOptions {
+    /// Max segment duration in minutes
+    max_duration: u16,
+    /// Tolerance value to simplify with Visvalingam-Whyatt algorithm
+    vw_tolerance: Option<f64>
+}
+
+impl TrackSegmentOptions {
+    pub fn new() -> Self {
+        Self {
+            max_duration: 300, // 5 minutes
+            vw_tolerance: None,
+        }
+    }
+
+    /// Enable the simplification with Visvalingam-Whyatt algorithm
+    pub fn simplify_with_vw(&mut self, tolerance: f64) -> &mut Self {
+        self.vw_tolerance = Some(tolerance);
+
+        self
+    }
+
+    /// Max time segment allowed, in seconds
+    pub fn max_segment_secs(&mut self, max: u16) -> &mut Self {
+        self.max_duration = if max < 1 { 1 } else { max };
+
+        self
+    }
+}
+
 /// Default tracks generator from source
 pub struct SourceToTracks {}
 
@@ -115,6 +137,7 @@ impl SourceToTracks {
         mut source: SU,
         start: OffsetDateTime,
         end: OffsetDateTime,
+        segment_confs: TrackSegmentOptions
     ) -> Result<Vec<Track>, String>
     where
         SU: PositionsSource,
@@ -149,6 +172,8 @@ impl SourceToTracks {
             if let Some(trk) = &dev_pos[0].tracker {
                 tracker.source(trk.to_string());
             }
+
+            tracker.configure_segments(&segment_confs);
 
             let raw = dev_pos.iter().map(|dpos| &dpos.pos).collect();
             let track = tracker.build(raw)?;

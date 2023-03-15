@@ -5,7 +5,7 @@ use time::{macros::datetime, OffsetDateTime};
 
 use super::gpx::GpxGenerator;
 use super::position::{DevicePosition, RawPosition};
-use super::tracker::{SourceToTracks, Tracker};
+use super::tracker::{SourceToTracks, Tracker, TrackSegmentOptions};
 use crate::PositionsSource;
 
 #[test]
@@ -147,10 +147,12 @@ fn source2tracks() -> Result<(), String> {
         }
     }
 
+    let op = TrackSegmentOptions::new();
     let tracks = SourceToTracks::build(
         TestSource {},
         datetime!(2021-05-24 0:00 UTC),
         datetime!(2022-05-24 0:00 UTC),
+        op,
     )?;
     assert_eq!(2, tracks.len());
 
@@ -229,10 +231,12 @@ fn source2tracks_with_rotes() -> Result<(), String> {
         }
     }
 
+    let op = TrackSegmentOptions::new();
     let tracks = SourceToTracks::build(
         TestSource {},
         datetime!(2021-05-24 0:00 UTC),
         datetime!(2022-05-24 0:00 UTC),
+        op,
     )?;
     assert_eq!(3, tracks.len());
 
@@ -368,8 +372,10 @@ fn simplify_track() -> Result<(), String> {
         ))
         .collect();
     let pos = raw.iter().map(|p| p).collect();
+    let mut op = TrackSegmentOptions::new();
+    op.simplify_with_vw(30.0);
     let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
-        .simplify_with_vw(30.0)
+        .configure_segments(&op)
         .build(pos)?;
     assert_eq!(1, track.segments.len());
 

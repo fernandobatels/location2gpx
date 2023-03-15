@@ -5,5 +5,5 @@ pub mod sources;
 
 pub use generator::gpx::GpxGenerator;
 pub use generator::position::{DevicePosition, RawPosition};
-pub use generator::tracker::{SourceToTracks, Tracker};
+pub use generator::tracker::{SourceToTracks, Tracker, TrackSegmentOptions};
 pub use sources::{PositionsSource, FieldsBuilder};

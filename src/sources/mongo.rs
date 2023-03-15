@@ -153,7 +153,7 @@ pub mod tests {
     use time::macros::datetime;
     use geo::geometry::Point;
 
-    use crate::{SourceToTracks, FieldsBuilder};
+    use crate::{SourceToTracks, FieldsBuilder, TrackSegmentOptions};
     use super::MongoDbSource;
 
     #[test]
@@ -172,8 +172,9 @@ pub mod tests {
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
         let source = MongoDbSource::new(collection, None);
+        let op = TrackSegmentOptions::new();
 
-        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC))?;
+        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC), op)?;
         assert_eq!(1, tracks.len());
 
         let track = &tracks[0];
@@ -202,12 +203,13 @@ pub mod tests {
         ];
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
+        let op = TrackSegmentOptions::new();
         let fields = FieldsBuilder::default()
             .flip_coordinates(true)
             .done();
         let source = MongoDbSource::new(collection, Some(fields));
 
-        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC))?;
+        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC), op)?;
         assert_eq!(1, tracks.len());
         let track = &tracks[0];
         assert_eq!(1, track.segments.len());
@@ -233,9 +235,10 @@ pub mod tests {
         ];
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
+        let op = TrackSegmentOptions::new();
         let source = MongoDbSource::new(collection, None);
 
-        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC))?;
+        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC), op)?;
         assert_eq!(1, tracks.len());
         let track = &tracks[0];
         assert_eq!(1, track.segments.len());
@@ -260,9 +263,10 @@ pub mod tests {
         ];
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
+        let op = TrackSegmentOptions::new();
         let source = MongoDbSource::new(collection, None);
 
-        let tracks = SourceToTracks::build(source, datetime!(2022-02-06 0:00 UTC), datetime!(2022-02-06 5:00 UTC))?;
+        let tracks = SourceToTracks::build(source, datetime!(2022-02-06 0:00 UTC), datetime!(2022-02-06 5:00 UTC), op)?;
         assert_eq!(1, tracks.len());
         let track = &tracks[0];
         assert_eq!(1, track.segments.len());
@@ -292,9 +296,10 @@ pub mod tests {
             .coordinates("coords")
             .time("dev_time")
             .done();
+        let op = TrackSegmentOptions::new();
         let source = MongoDbSource::new(collection, Some(fields));
 
-        let tracks = SourceToTracks::build(source, datetime!(2022-02-06 0:00 UTC), datetime!(2022-02-06 5:00 UTC))?;
+        let tracks = SourceToTracks::build(source, datetime!(2022-02-06 0:00 UTC), datetime!(2022-02-06 5:00 UTC), op)?;
         assert_eq!(1, tracks.len());
         let track = &tracks[0];
         assert_eq!(1, track.segments.len());
@@ -320,9 +325,10 @@ pub mod tests {
         ];
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
+        let op = TrackSegmentOptions::new();
         let source = MongoDbSource::new(collection, None);
 
-        let tracks = SourceToTracks::build(source, datetime!(2022-01-06 0:00 UTC), datetime!(2022-03-06 5:00 UTC))?;
+        let tracks = SourceToTracks::build(source, datetime!(2022-01-06 0:00 UTC), datetime!(2022-03-06 5:00 UTC), op)?;
         assert_eq!(1, tracks.len());
         let track = &tracks[0];
         assert_eq!(1, track.segments.len());
@@ -351,9 +357,10 @@ pub mod tests {
         ];
         collection.insert_many(docs, None).map_err(|e| e.to_string())?;
 
+        let op = TrackSegmentOptions::new();
         let source = MongoDbSource::new(collection, None);
 
-        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC))?;
+        let tracks = SourceToTracks::build(source, datetime!(2021-05-24 0:00 UTC), datetime!(2023-05-24 0:00 UTC), op)?;
         assert_eq!(4, tracks.len());
 
         let track = &tracks[0];
