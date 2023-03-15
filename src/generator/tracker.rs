@@ -26,7 +26,7 @@ impl Tracker {
             device,
             name,
             source: None,
-            segment_confs: TrackSegmentOptions::new()
+            segment_confs: TrackSegmentOptions::new(),
         }
     }
 
@@ -74,11 +74,8 @@ impl Tracker {
         }
 
         for (_, tseg) in segs {
-
             if let Some(tol) = self.segment_confs.vw_tolerance {
-
-                let keep = tseg.linestring()
-                    .simplify_vw_idx(&tol);
+                let keep = tseg.linestring().simplify_vw_idx(&tol);
 
                 let mut ntseg = TrackSegment::new();
 
@@ -102,7 +99,7 @@ pub struct TrackSegmentOptions {
     /// Max segment duration in minutes
     max_duration: u16,
     /// Tolerance value to simplify with Visvalingam-Whyatt algorithm
-    vw_tolerance: Option<f64>
+    vw_tolerance: Option<f64>,
 }
 
 impl TrackSegmentOptions {
@@ -137,7 +134,7 @@ impl SourceToTracks {
         mut source: SU,
         start: OffsetDateTime,
         end: OffsetDateTime,
-        segment_confs: TrackSegmentOptions
+        segment_confs: TrackSegmentOptions,
     ) -> Result<Vec<Track>, String>
     where
         SU: PositionsSource,

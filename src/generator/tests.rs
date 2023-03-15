@@ -5,7 +5,7 @@ use time::{macros::datetime, OffsetDateTime};
 
 use super::gpx::GpxGenerator;
 use super::position::{DevicePosition, RawPosition};
-use super::tracker::{SourceToTracks, Tracker, TrackSegmentOptions};
+use super::tracker::{SourceToTracks, TrackSegmentOptions, Tracker};
 use crate::PositionsSource;
 
 #[test]
@@ -298,59 +298,83 @@ fn time_segmented_track() -> Result<(), String> {
         datetime!(2021-05-24 0:02 UTC),
         datetime!(2021-05-24 0:03 UTC),
         datetime!(2021-05-24 0:04 UTC),
-
         datetime!(2021-05-24 0:05 UTC),
         datetime!(2021-05-24 0:06 UTC),
         datetime!(2021-05-24 0:07 UTC),
         datetime!(2021-05-24 0:08 UTC),
         datetime!(2021-05-24 0:09 UTC),
-
         datetime!(2021-05-24 0:17 UTC),
         datetime!(2021-05-24 0:18 UTC),
         datetime!(2021-05-24 0:19 UTC),
-
         datetime!(2021-05-24 0:21 UTC),
         datetime!(2021-05-24 0:22 UTC),
         datetime!(2021-05-24 0:24 UTC),
-
         datetime!(2021-05-24 1:21 UTC),
     ];
 
-    let raw: Vec<RawPosition> = times.iter()
-        .map(|tm| RawPosition::basic(
-            Point::new(-48.8702222, -26.31832),
-            *tm
-        ))
+    let raw: Vec<RawPosition> = times
+        .iter()
+        .map(|tm| RawPosition::basic(Point::new(-48.8702222, -26.31832), *tm))
         .collect();
     let pos = raw.iter().map(|p| p).collect();
-    let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
-        .build(pos)?;
+    let track =
+        Tracker::new("my dev 1".to_string(), "running in joinville".to_string()).build(pos)?;
     assert_eq!(5, track.segments.len());
 
     let segment = &track.segments[0];
     assert_eq!(5, segment.points.len());
-    assert_eq!(Some(datetime!(2021-05-24 0:00 UTC).into()), segment.points[0].time);
-    assert_eq!(Some(datetime!(2021-05-24 0:04 UTC).into()), segment.points[4].time);
+    assert_eq!(
+        Some(datetime!(2021-05-24 0:00 UTC).into()),
+        segment.points[0].time
+    );
+    assert_eq!(
+        Some(datetime!(2021-05-24 0:04 UTC).into()),
+        segment.points[4].time
+    );
 
     let segment = &track.segments[1];
     assert_eq!(5, segment.points.len());
-    assert_eq!(Some(datetime!(2021-05-24 0:05 UTC).into()), segment.points[0].time);
-    assert_eq!(Some(datetime!(2021-05-24 0:09 UTC).into()), segment.points[4].time);
+    assert_eq!(
+        Some(datetime!(2021-05-24 0:05 UTC).into()),
+        segment.points[0].time
+    );
+    assert_eq!(
+        Some(datetime!(2021-05-24 0:09 UTC).into()),
+        segment.points[4].time
+    );
 
     let segment = &track.segments[2];
     assert_eq!(3, segment.points.len());
-    assert_eq!(Some(datetime!(2021-05-24 0:17 UTC).into()), segment.points[0].time);
-    assert_eq!(Some(datetime!(2021-05-24 0:19 UTC).into()), segment.points[2].time);
+    assert_eq!(
+        Some(datetime!(2021-05-24 0:17 UTC).into()),
+        segment.points[0].time
+    );
+    assert_eq!(
+        Some(datetime!(2021-05-24 0:19 UTC).into()),
+        segment.points[2].time
+    );
 
     let segment = &track.segments[3];
     assert_eq!(3, segment.points.len());
-    assert_eq!(Some(datetime!(2021-05-24 0:21 UTC).into()), segment.points[0].time);
-    assert_eq!(Some(datetime!(2021-05-24 0:24 UTC).into()), segment.points[2].time);
+    assert_eq!(
+        Some(datetime!(2021-05-24 0:21 UTC).into()),
+        segment.points[0].time
+    );
+    assert_eq!(
+        Some(datetime!(2021-05-24 0:24 UTC).into()),
+        segment.points[2].time
+    );
 
     let segment = &track.segments[4];
     assert_eq!(1, segment.points.len());
-    assert_eq!(Some(datetime!(2021-05-24 1:21 UTC).into()), segment.points[0].time);
-    assert_eq!(Some(datetime!(2021-05-24 1:21 UTC).into()), segment.points[0].time);
+    assert_eq!(
+        Some(datetime!(2021-05-24 1:21 UTC).into()),
+        segment.points[0].time
+    );
+    assert_eq!(
+        Some(datetime!(2021-05-24 1:21 UTC).into()),
+        segment.points[0].time
+    );
 
     Ok(())
 }
@@ -365,11 +389,9 @@ fn simplify_track() -> Result<(), String> {
         Point::new(10.0, 10.0),
     ];
 
-    let raw: Vec<RawPosition> = locs.iter()
-        .map(|loc| RawPosition::basic(
-            *loc,
-            datetime!(2021-05-24 0:00 UTC),
-        ))
+    let raw: Vec<RawPosition> = locs
+        .iter()
+        .map(|loc| RawPosition::basic(*loc, datetime!(2021-05-24 0:00 UTC)))
         .collect();
     let pos = raw.iter().map(|p| p).collect();
     let mut op = TrackSegmentOptions::new();

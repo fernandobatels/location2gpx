@@ -22,7 +22,7 @@ pub struct FieldsBuilder {
     coordinates: String,
     speed: String,
     elevation: String,
-    flip_coordinates: bool
+    flip_coordinates: bool,
 }
 
 impl Default for FieldsBuilder {
@@ -34,7 +34,7 @@ impl Default for FieldsBuilder {
             coordinates: "coordinates".to_string(),
             speed: "speed".to_string(),
             elevation: "elevation".to_string(),
-            flip_coordinates: false
+            flip_coordinates: false,
         }
     }
 }

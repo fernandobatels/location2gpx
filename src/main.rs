@@ -1,15 +1,15 @@
 //! location2gpx cli - GPX generator from many location sources
 
-use std::io::BufWriter;
 use std::fs::File;
+use std::io::BufWriter;
 
-use mongodb::sync::Client;
 use bson::{doc, Document};
+use mongodb::sync::Client;
 use time::format_description::well_known;
 use time::OffsetDateTime;
 
-use location2gpx::{SourceToTracks, FieldsBuilder, GpxGenerator, TrackSegmentOptions};
 use location2gpx::sources::MongoDbSource;
+use location2gpx::{FieldsBuilder, GpxGenerator, SourceToTracks, TrackSegmentOptions};
 
 /// CLI of location2gpx - Convert your raw GPS data into a GPX file
 #[argopt::cmd]
@@ -24,20 +24,13 @@ fn main(
     end: String,
     /// OFX path file destination
     destination: String,
-    #[opt(long)]
-    field_device: Option<String>,
-    #[opt(long)]
-    field_coordinates: Option<String>,
-    #[opt(long)]
-    flip_field_coordinates: Option<bool>,
-    #[opt(long)]
-    field_time: Option<String>,
-    #[opt(long)]
-    field_route: Option<String>,
-    #[opt(long)]
-    field_speed: Option<String>,
-    #[opt(long)]
-    field_elevation: Option<String>,
+    #[opt(long)] field_device: Option<String>,
+    #[opt(long)] field_coordinates: Option<String>,
+    #[opt(long)] flip_field_coordinates: Option<bool>,
+    #[opt(long)] field_time: Option<String>,
+    #[opt(long)] field_route: Option<String>,
+    #[opt(long)] field_speed: Option<String>,
+    #[opt(long)] field_elevation: Option<String>,
     /// Enable the simplify Visvalingam-Whyatt algorithm providing the tolerance
     #[opt(long)]
     simplify: Option<f64>,
@@ -45,7 +38,6 @@ fn main(
     #[opt(long)]
     max_seg_time: Option<u16>,
 ) -> Result<(), String> {
-
     let start = OffsetDateTime::parse(&start, &well_known::Rfc3339)
         .map_err(|e| format!("Failed on parse the start time: {}", e.to_string()))?;
     let end = OffsetDateTime::parse(&end, &well_known::Rfc3339)
@@ -56,7 +48,8 @@ fn main(
 
     let client = Client::with_uri_str(connection)
         .map_err(|e| format!("Failed on connect: {0}", e.to_string()))?;
-    let db = client.default_database()
+    let db = client
+        .default_database()
         .ok_or("Default database not provided")?;
     let collection = db.collection::<Document>(&collection);
 
@@ -102,8 +95,7 @@ fn main(
     let doc = gpx.generate()?;
 
     let mut writer = BufWriter::new(destination);
-    gpx::write(&doc, &mut writer)
-        .map_err(|e| e.to_string())?;
+    gpx::write(&doc, &mut writer).map_err(|e| e.to_string())?;
 
     Ok(())
 }
