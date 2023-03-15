@@ -22,7 +22,7 @@ fn main(
     start: String,
     /// End time, RFC3339 format
     end: String,
-    /// OFX path file destination
+    /// GPX path file destination
     destination: String,
     #[opt(long)] field_device: Option<String>,
     #[opt(long)] field_coordinates: Option<String>,
