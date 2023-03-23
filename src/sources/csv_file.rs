@@ -82,6 +82,9 @@ struct FieldsIndex {
     device: usize,
     coordinates: usize,
     time: usize,
+    route: Option<usize>,
+    speed: Option<usize>,
+    elevation: Option<usize>,
 }
 
 fn parse_header(fields: &FieldsBuilder, header: &mut StringRecord) -> Result<FieldsIndex, String> {
@@ -108,10 +111,21 @@ fn parse_header(fields: &FieldsBuilder, header: &mut StringRecord) -> Result<Fie
         None => Err("Time header not found"),
     }?;
 
+    let route = header.iter().position(|h| h.to_lowercase() == fields.route);
+
+    let speed = header.iter().position(|h| h.to_lowercase() == fields.speed);
+
+    let elevation = header
+        .iter()
+        .position(|h| h.to_lowercase() == fields.elevation);
+
     Ok(FieldsIndex {
         device,
         coordinates,
         time,
+        route,
+        speed,
+        elevation,
     })
 }
 
@@ -164,7 +178,34 @@ fn parse_row(
         None => Err("Time field not found".to_string()),
     }?;
 
-    let dpos = DevicePosition::basic(device_id.clone(), Point::new(lng, lat), time);
+    let mut dpos = DevicePosition::basic(device_id.clone(), Point::new(lng, lat), time);
+
+    if let Some(iroute) = header.route {
+        dpos.route_name = match row.get(iroute) {
+            Some(d) => {
+                if !d.trim().is_empty() {
+                    Some(d.trim().to_string())
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+    }
+
+    if let Some(ispeed) = header.speed {
+        dpos.pos.speed = match row.get(ispeed) {
+            Some(d) => d.parse::<f64>().ok(),
+            None => None,
+        };
+    }
+
+    if let Some(ielevation) = header.elevation {
+        dpos.pos.altitude = match row.get(ielevation) {
+            Some(d) => d.parse::<f64>().ok(),
+            None => None,
+        };
+    }
 
     Ok(Some(dpos))
 }
@@ -271,6 +312,39 @@ pub mod tests {
         assert_eq!(1, track.segments.len());
         let segment = &track.segments[0];
         assert_eq!(1, segment.points.len());
+
+        Ok(())
+    }
+
+    #[test]
+    fn extra_fields() -> Result<(), String> {
+        let data = "\n
+            device,coordinates,time,route,speed,elevation\n
+            AA251,\"-48.8702222,-26.31832\",\"2019-10-01T00:01:00.000+00:00\",\"JOI123\",0.2,200\n
+            AA251,\"-48.8702222,-26.31832\",\"2019-10-01T00:01:10.000+00:00\",\"JOI123\",0.7,198.0\n
+        ";
+        let rdr = ReaderBuilder::new()
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        let source = CsvSource::new(rdr, None);
+        let op = TrackSegmentOptions::new();
+
+        let tracks = SourceToTracks::build(
+            source,
+            datetime!(2010-10-01 0:00 UTC),
+            datetime!(2020-10-01 2:00 UTC),
+            op,
+        )?;
+        assert_eq!(1, tracks.len());
+        let track = &tracks[0];
+        assert_eq!(1, track.segments.len());
+        assert_eq!(Some("JOI123".to_string()), track.name);
+        let segment = &track.segments[0];
+        assert_eq!(2, segment.points.len());
+        let point = &segment.points[0];
+        assert_eq!(Some(0.2), point.speed);
+        assert_eq!(Some(200.0), point.elevation);
 
         Ok(())
     }
