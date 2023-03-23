@@ -2,23 +2,27 @@
 
 use std::io::Read;
 
+use csv::{Reader, StringRecord};
 use geo::geometry::Point;
 use time::format_description::well_known;
 use time::OffsetDateTime;
-use csv::{Reader, StringRecord};
 
 use super::{FieldsBuilder, PositionsSource};
 use crate::DevicePosition;
 
 /// MongoDB tracks source
 pub struct CsvSource<T>
-where T: Read {
+where
+    T: Read,
+{
     rdr: Reader<T>,
     fields: FieldsBuilder,
 }
 
 impl<T> CsvSource<T>
-where T: Read {
+where
+    T: Read,
+{
     pub fn new(rdr: Reader<T>, fields: Option<FieldsBuilder>) -> Self {
         Self {
             rdr,
@@ -31,7 +35,9 @@ where T: Read {
 }
 
 impl<T> PositionsSource for CsvSource<T>
-where T: Read {
+where
+    T: Read,
+{
     fn fetch(
         &mut self,
         start: OffsetDateTime,
@@ -39,7 +45,9 @@ where T: Read {
     ) -> Result<Vec<DevicePosition>, String> {
         let mut pos = vec![];
 
-        let mut header = self.rdr.headers()
+        let mut header = self
+            .rdr
+            .headers()
             .map_err(|e| format!("Failed on read the header: {}", e.to_string()))?
             .clone();
         let header_idx = parse_header(&self.fields, &mut header)?;
@@ -73,18 +81,24 @@ where T: Read {
 struct FieldsIndex {
     device: usize,
     coordinates: usize,
-    time: usize
+    time: usize,
 }
 
 fn parse_header(fields: &FieldsBuilder, header: &mut StringRecord) -> Result<FieldsIndex, String> {
     header.trim();
 
-    let device = match header.iter().position(|h| h.to_lowercase() == fields.device_id) {
+    let device = match header
+        .iter()
+        .position(|h| h.to_lowercase() == fields.device_id)
+    {
         Some(p) => Ok(p),
         None => Err("Device header not found"),
     }?;
 
-    let coordinates = match header.iter().position(|h| h.to_lowercase() == fields.coordinates) {
+    let coordinates = match header
+        .iter()
+        .position(|h| h.to_lowercase() == fields.coordinates)
+    {
         Some(p) => Ok(p),
         None => Err("Coordinates header not found"),
     }?;
@@ -97,29 +111,33 @@ fn parse_header(fields: &FieldsBuilder, header: &mut StringRecord) -> Result<Fie
     Ok(FieldsIndex {
         device,
         coordinates,
-        time
+        time,
     })
 }
 
-fn parse_row(header: &FieldsIndex, fields: &FieldsBuilder, row: &mut StringRecord) -> Result<Option<DevicePosition>, String> {
-
+fn parse_row(
+    header: &FieldsIndex,
+    fields: &FieldsBuilder,
+    row: &mut StringRecord,
+) -> Result<Option<DevicePosition>, String> {
     row.trim();
 
     let device_id = match row.get(header.device) {
         Some(d) => Ok(d.to_string()),
-        None => Err("Device field not found")
+        None => Err("Device field not found"),
     }?;
 
     let raw_coordinates = match row.get(header.coordinates) {
         Some(d) => Ok(d.to_string()),
-        None => Err("Coordinates field not found")
+        None => Err("Coordinates field not found"),
     }?;
     let separator = match raw_coordinates.clone() {
         s if s.contains(",") => ",",
         s if s.contains(";") => ";",
-        _ => " "
+        _ => " ",
     };
-    let scoordinates: Vec<String> = raw_coordinates.split(separator)
+    let scoordinates: Vec<String> = raw_coordinates
+        .split(separator)
         .map(|s| s.trim().to_string())
         .collect();
     if scoordinates.len() != 2 {
@@ -133,15 +151,17 @@ fn parse_row(header: &FieldsIndex, fields: &FieldsBuilder, row: &mut StringRecor
         ilng = 1;
     }
 
-    let lat = scoordinates[ilat].parse::<f64>()
+    let lat = scoordinates[ilat]
+        .parse::<f64>()
         .map_err(|e| format!("Invalid latitude format: {}", e.to_string()))?;
-    let lng = scoordinates[ilng].parse::<f64>()
+    let lng = scoordinates[ilng]
+        .parse::<f64>()
         .map_err(|e| format!("Invalid longitude format: {}", e.to_string()))?;
 
     let time = match row.get(header.time) {
         Some(d) => OffsetDateTime::parse(d, &well_known::Rfc3339)
             .map_err(|e| format!("Failed on parse the time: {}", e.to_string())),
-        None => Err("Time field not found".to_string())
+        None => Err("Time field not found".to_string()),
     }?;
 
     let dpos = DevicePosition::basic(device_id.clone(), Point::new(lng, lat), time);
@@ -151,9 +171,9 @@ fn parse_row(header: &FieldsIndex, fields: &FieldsBuilder, row: &mut StringRecor
 
 #[cfg(test)]
 pub mod tests {
+    use csv::ReaderBuilder;
     use geo::geometry::Point;
     use time::macros::datetime;
-    use csv::ReaderBuilder;
 
     use super::CsvSource;
     use crate::{SourceToTracks, TrackSegmentOptions};
