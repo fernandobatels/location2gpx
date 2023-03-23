@@ -89,6 +89,10 @@ impl FieldsBuilder {
 
 #[cfg(feature = "mongo")]
 mod mongo;
-
 #[cfg(feature = "mongo")]
 pub use mongo::MongoDbSource;
+
+#[cfg(feature = "csv")]
+mod csv_file;
+#[cfg(feature = "csv")]
+pub use csv_file::CsvSource;
