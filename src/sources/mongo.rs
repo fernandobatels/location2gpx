@@ -156,7 +156,7 @@ pub mod tests {
     use crate::{FieldsBuilder, SourceToTracks, TrackSegmentOptions};
 
     #[test]
-    fn mongo_track() -> Result<(), String> {
+    fn track() -> Result<(), String> {
         let client =
             Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
         let db = client.database("location2gpx_tests");
@@ -198,7 +198,7 @@ pub mod tests {
     }
 
     #[test]
-    fn mongo_track_flip_coordinates() -> Result<(), String> {
+    fn track_flip_coordinates() -> Result<(), String> {
         let client =
             Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
         let db = client.database("location2gpx_tests");
@@ -238,7 +238,7 @@ pub mod tests {
     }
 
     #[test]
-    fn mongo_track_others_fields_types() -> Result<(), String> {
+    fn track_others_fields_types() -> Result<(), String> {
         let client =
             Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
         let db = client.database("location2gpx_tests");
@@ -273,7 +273,7 @@ pub mod tests {
     }
 
     #[test]
-    fn mongo_track_filter() -> Result<(), String> {
+    fn track_filter() -> Result<(), String> {
         let client =
             Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
         let db = client.database("location2gpx_tests");
@@ -308,7 +308,7 @@ pub mod tests {
     }
 
     #[test]
-    fn mongo_track_custom_fields() -> Result<(), String> {
+    fn track_custom_fields() -> Result<(), String> {
         let client =
             Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
         let db = client.database("location2gpx_tests");
@@ -348,7 +348,7 @@ pub mod tests {
     }
 
     #[test]
-    fn mongo_track_filter_out_failed_positions() -> Result<(), String> {
+    fn track_filter_out_failed_positions() -> Result<(), String> {
         let client =
             Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
         let db = client.database("location2gpx_tests");
@@ -384,7 +384,7 @@ pub mod tests {
     }
 
     #[test]
-    fn mongo_track_route_field() -> Result<(), String> {
+    fn track_route_field() -> Result<(), String> {
         let client =
             Client::with_uri_str("mongodb://localhost:27017").map_err(|e| e.to_string())?;
         let db = client.database("location2gpx_tests");

@@ -52,12 +52,16 @@ where T: Read {
                 continue;
             }
 
-            let dpos = match parse_row(&header_idx, &self.fields, &mut rec) {
+            let row_pos = match parse_row(&header_idx, &self.fields, &mut rec) {
                 Ok(dpos) => Ok(dpos),
                 Err(e) => Err(format!("Error with row {:?}: {}", rec, e)),
             }?;
 
-            pos.push(dpos);
+            if let Some(dpos) = row_pos {
+                if start <= dpos.pos.time && dpos.pos.time <= end {
+                    pos.push(dpos);
+                }
+            }
         }
 
         Ok(pos)
@@ -97,7 +101,7 @@ fn parse_header(fields: &FieldsBuilder, header: &mut StringRecord) -> Result<Fie
     })
 }
 
-fn parse_row(header: &FieldsIndex, fields: &FieldsBuilder, row: &mut StringRecord) -> Result<DevicePosition, String> {
+fn parse_row(header: &FieldsIndex, fields: &FieldsBuilder, row: &mut StringRecord) -> Result<Option<DevicePosition>, String> {
 
     row.trim();
 
@@ -119,7 +123,7 @@ fn parse_row(header: &FieldsIndex, fields: &FieldsBuilder, row: &mut StringRecor
         .map(|s| s.trim().to_string())
         .collect();
     if scoordinates.len() != 2 {
-        return Err("Invalid coordinates size".to_string());
+        return Ok(None);
     }
 
     let mut ilat = 1;
@@ -142,7 +146,7 @@ fn parse_row(header: &FieldsIndex, fields: &FieldsBuilder, row: &mut StringRecor
 
     let dpos = DevicePosition::basic(device_id.clone(), Point::new(lng, lat), time);
 
-    Ok(dpos)
+    Ok(Some(dpos))
 }
 
 #[cfg(test)]
@@ -152,10 +156,10 @@ pub mod tests {
     use csv::ReaderBuilder;
 
     use super::CsvSource;
-    use crate::{FieldsBuilder, SourceToTracks, TrackSegmentOptions};
+    use crate::{SourceToTracks, TrackSegmentOptions};
 
     #[test]
-    fn csv_track() -> Result<(), String> {
+    fn track() -> Result<(), String> {
         let data = "\n
             device,coordinates,time\n
             AA251,\"-48.8702222, -26.31832\",\"2019-10-01T00:01:00.000+00:00\"\n
@@ -187,6 +191,66 @@ pub mod tests {
             Point::new(-48.8702222, -26.31832),
             segment.points[0].point()
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn track_filter() -> Result<(), String> {
+        let data = "\n
+            device,coordinates,time\n
+            AA251,\"-48.8702222,-26.31832\",\"2019-10-01T00:01:00.000+00:00\"\n
+            AA251,\"-48.8802222 -26.31832\",\"2019-10-02T00:02:00.000+00:00\"\n
+            AA251,\"-48.8902222;-26.31832\",\"2019-10-03T00:03:00.000+00:00\"\n
+        ";
+        let rdr = ReaderBuilder::new()
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        let source = CsvSource::new(rdr, None);
+        let op = TrackSegmentOptions::new();
+
+        let tracks = SourceToTracks::build(
+            source,
+            datetime!(2019-10-01 0:00 UTC),
+            datetime!(2019-10-01 2:00 UTC),
+            op,
+        )?;
+        assert_eq!(1, tracks.len());
+        let track = &tracks[0];
+        assert_eq!(1, track.segments.len());
+        let segment = &track.segments[0];
+        assert_eq!(1, segment.points.len());
+
+        Ok(())
+    }
+
+    #[test]
+    fn track_filter_out_failed_positions() -> Result<(), String> {
+        let data = "\n
+            device,coordinates,time\n
+            AA251,\"-48.8702222,-26.31832\",\"2019-10-01T00:01:00.000+00:00\"\n
+            AA251,,\"2019-10-02T00:02:00.000+00:00\"\n
+            AA251, ,\"2019-10-03T00:03:00.000+00:00\"\n
+        ";
+        let rdr = ReaderBuilder::new()
+            .flexible(true)
+            .from_reader(data.as_bytes());
+
+        let source = CsvSource::new(rdr, None);
+        let op = TrackSegmentOptions::new();
+
+        let tracks = SourceToTracks::build(
+            source,
+            datetime!(2010-10-01 0:00 UTC),
+            datetime!(2020-10-01 2:00 UTC),
+            op,
+        )?;
+        assert_eq!(1, tracks.len());
+        let track = &tracks[0];
+        assert_eq!(1, track.segments.len());
+        let segment = &track.segments[0];
+        assert_eq!(1, segment.points.len());
 
         Ok(())
     }
