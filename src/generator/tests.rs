@@ -147,7 +147,7 @@ fn source2tracks() -> Result<(), String> {
         }
     }
 
-    let op = TrackSegmentOptions::new();
+    let op = TrackSegmentOptions::default();
     let tracks = SourceToTracks::build(
         TestSource {},
         datetime!(2021-05-24 0:00 UTC),
@@ -231,7 +231,7 @@ fn source2tracks_with_rotes() -> Result<(), String> {
         }
     }
 
-    let op = TrackSegmentOptions::new();
+    let op = TrackSegmentOptions::default();
     let tracks = SourceToTracks::build(
         TestSource {},
         datetime!(2021-05-24 0:00 UTC),
@@ -394,8 +394,8 @@ fn simplify_track() -> Result<(), String> {
         .map(|loc| RawPosition::basic(*loc, datetime!(2021-05-24 0:00 UTC)))
         .collect();
     let pos = raw.iter().map(|p| p).collect();
-    let mut op = TrackSegmentOptions::new();
-    op.simplify_with_vw(30.0);
+    let mut op = TrackSegmentOptions::default();
+    op.vw_tolerance = Some(30.0);
     let track = Tracker::new("my dev 1".to_string(), "running in joinville".to_string())
         .configure_segments(&op)
         .build(pos)?;

@@ -6,22 +6,22 @@ use mongodb::sync::Collection;
 use time::format_description::well_known;
 use time::OffsetDateTime;
 
-use super::{FieldsBuilder, PositionsSource};
+use super::{FieldsConfiguration, PositionsSource};
 use crate::DevicePosition;
 
 /// MongoDB tracks source
 pub struct MongoDbSource {
     collection: Collection<Document>,
-    fields: FieldsBuilder,
+    fields: FieldsConfiguration,
 }
 
 impl MongoDbSource {
-    pub fn new(collection: Collection<Document>, fields: Option<FieldsBuilder>) -> Self {
+    pub fn new(collection: Collection<Document>, fields: Option<FieldsConfiguration>) -> Self {
         Self {
             collection,
             fields: match fields {
                 Some(f) => f,
-                None => FieldsBuilder::default(),
+                None => FieldsConfiguration::default(),
             },
         }
     }
@@ -68,7 +68,7 @@ impl PositionsSource for MongoDbSource {
     }
 }
 
-fn parse_doc(fields: &FieldsBuilder, doc: &Document) -> Result<DevicePosition, String> {
+fn parse_doc(fields: &FieldsConfiguration, doc: &Document) -> Result<DevicePosition, String> {
     let device_id = match doc.get(fields.device_id.clone()) {
         Some(Bson::String(di)) => Ok(di.clone()),
         Some(Bson::Int32(di)) => Ok(di.to_string()),
@@ -153,7 +153,7 @@ pub mod tests {
     use time::macros::datetime;
 
     use super::MongoDbSource;
-    use crate::{FieldsBuilder, SourceToTracks, TrackSegmentOptions};
+    use crate::{FieldsConfiguration, SourceToTracks, TrackSegmentOptions};
 
     #[test]
     fn track() -> Result<(), String> {
@@ -173,7 +173,7 @@ pub mod tests {
             .map_err(|e| e.to_string())?;
 
         let source = MongoDbSource::new(collection, None);
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
 
         let tracks = SourceToTracks::build(
             source,
@@ -214,8 +214,10 @@ pub mod tests {
             .insert_many(docs, None)
             .map_err(|e| e.to_string())?;
 
-        let op = TrackSegmentOptions::new();
-        let fields = FieldsBuilder::default().flip_coordinates(true).done();
+        let op = TrackSegmentOptions::default();
+        let mut fields = FieldsConfiguration::default();
+        fields.flip_coordinates = true;
+
         let source = MongoDbSource::new(collection, Some(fields));
 
         let tracks = SourceToTracks::build(
@@ -254,7 +256,7 @@ pub mod tests {
             .insert_many(docs, None)
             .map_err(|e| e.to_string())?;
 
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
         let source = MongoDbSource::new(collection, None);
 
         let tracks = SourceToTracks::build(
@@ -289,7 +291,7 @@ pub mod tests {
             .insert_many(docs, None)
             .map_err(|e| e.to_string())?;
 
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
         let source = MongoDbSource::new(collection, None);
 
         let tracks = SourceToTracks::build(
@@ -324,12 +326,12 @@ pub mod tests {
             .insert_many(docs, None)
             .map_err(|e| e.to_string())?;
 
-        let fields = FieldsBuilder::default()
-            .device("dev")
-            .coordinates("coords")
-            .time("dev_time")
-            .done();
-        let op = TrackSegmentOptions::new();
+        let mut fields = FieldsConfiguration::default();
+        fields.device_id = "dev".to_string();
+        fields.coordinates = "coords".to_string();
+        fields.time = "dev_time".to_string();
+
+        let op = TrackSegmentOptions::default();
         let source = MongoDbSource::new(collection, Some(fields));
 
         let tracks = SourceToTracks::build(
@@ -365,7 +367,7 @@ pub mod tests {
             .insert_many(docs, None)
             .map_err(|e| e.to_string())?;
 
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
         let source = MongoDbSource::new(collection, None);
 
         let tracks = SourceToTracks::build(
@@ -404,7 +406,7 @@ pub mod tests {
             .insert_many(docs, None)
             .map_err(|e| e.to_string())?;
 
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
         let source = MongoDbSource::new(collection, None);
 
         let tracks = SourceToTracks::build(

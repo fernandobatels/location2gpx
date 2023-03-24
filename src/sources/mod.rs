@@ -1,7 +1,9 @@
 //! Positions sources API
 
-use crate::DevicePosition;
+use serde::Deserialize;
 use time::OffsetDateTime;
+
+use crate::DevicePosition;
 
 /// Position source
 pub trait PositionsSource {
@@ -14,18 +16,22 @@ pub trait PositionsSource {
 }
 
 /// Fields of source customization
-#[derive(Debug, Clone)]
-pub struct FieldsBuilder {
-    device_id: String,
-    time: String,
-    route: String,
-    coordinates: String,
-    speed: String,
-    elevation: String,
-    flip_coordinates: bool,
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct FieldsConfiguration {
+    /// Device name or ID
+    pub device_id: String,
+    pub time: String,
+    /// Route name or ID
+    pub route: String,
+    pub coordinates: String,
+    pub speed: String,
+    pub elevation: String,
+    /// Flip the lat,lng coordinates order
+    pub flip_coordinates: bool,
 }
 
-impl Default for FieldsBuilder {
+impl Default for FieldsConfiguration {
     fn default() -> Self {
         Self {
             device_id: "device".to_string(),
@@ -39,54 +45,6 @@ impl Default for FieldsBuilder {
     }
 }
 
-impl FieldsBuilder {
-    /// Change the device id field name
-    pub fn device<S: Into<String>>(&mut self, name: S) -> &mut Self {
-        self.device_id = name.into();
-        self
-    }
-
-    /// Change the time field name
-    pub fn time<S: Into<String>>(&mut self, name: S) -> &mut Self {
-        self.time = name.into();
-        self
-    }
-
-    /// Change the route field name
-    pub fn route<S: Into<String>>(&mut self, name: S) -> &mut Self {
-        self.route = name.into();
-        self
-    }
-
-    /// Change the coordinates field name
-    pub fn coordinates<S: Into<String>>(&mut self, name: S) -> &mut Self {
-        self.coordinates = name.into();
-        self
-    }
-
-    /// Change the speed field name
-    pub fn speed<S: Into<String>>(&mut self, name: S) -> &mut Self {
-        self.speed = name.into();
-        self
-    }
-
-    /// Change the elevation field name
-    pub fn elevation<S: Into<String>>(&mut self, name: S) -> &mut Self {
-        self.elevation = name.into();
-        self
-    }
-
-    /// Flip the lat,lng coordinates order
-    pub fn flip_coordinates(&mut self, flip: bool) -> &mut Self {
-        self.flip_coordinates = flip;
-        self
-    }
-
-    pub fn done(&mut self) -> Self {
-        self.clone()
-    }
-}
-
 #[cfg(feature = "mongo")]
 mod mongo;
 #[cfg(feature = "mongo")]
@@ -96,3 +54,40 @@ pub use mongo::MongoDbSource;
 mod csv_file;
 #[cfg(feature = "csv")]
 pub use csv_file::CsvSource;
+
+
+#[test]
+fn parse_fields() -> Result<(), String> {
+
+    let yaml = "";
+
+    let fb: FieldsConfiguration = serde_yaml::from_str(&yaml)
+        .map_err(|e| e.to_string())?;
+
+    assert_eq!(FieldsConfiguration {
+        device_id: "device".to_string(),
+        time: "time".to_string(),
+        route: "route".to_string(),
+        coordinates: "coordinates".to_string(),
+        speed: "speed".to_string(),
+        elevation: "elevation".to_string(),
+        flip_coordinates: false,
+    }, fb);
+
+    let yaml = "\ndevice_id: dev\ntime: time\ncoordinates: coords";
+
+    let fb: FieldsConfiguration = serde_yaml::from_str(&yaml)
+        .map_err(|e| e.to_string())?;
+
+    assert_eq!(FieldsConfiguration {
+        device_id: "dev".to_string(),
+        time: "time".to_string(),
+        route: "route".to_string(),
+        coordinates: "coords".to_string(),
+        speed: "speed".to_string(),
+        elevation: "elevation".to_string(),
+        flip_coordinates: false,
+    }, fb);
+
+    Ok(())
+}

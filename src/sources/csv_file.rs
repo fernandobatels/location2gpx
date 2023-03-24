@@ -7,7 +7,7 @@ use geo::geometry::Point;
 use time::format_description::well_known;
 use time::OffsetDateTime;
 
-use super::{FieldsBuilder, PositionsSource};
+use super::{FieldsConfiguration, PositionsSource};
 use crate::DevicePosition;
 
 /// MongoDB tracks source
@@ -16,19 +16,19 @@ where
     T: Read,
 {
     rdr: Reader<T>,
-    fields: FieldsBuilder,
+    fields: FieldsConfiguration,
 }
 
 impl<T> CsvSource<T>
 where
     T: Read,
 {
-    pub fn new(rdr: Reader<T>, fields: Option<FieldsBuilder>) -> Self {
+    pub fn new(rdr: Reader<T>, fields: Option<FieldsConfiguration>) -> Self {
         Self {
             rdr,
             fields: match fields {
                 Some(f) => f,
-                None => FieldsBuilder::default(),
+                None => FieldsConfiguration::default(),
             },
         }
     }
@@ -87,7 +87,7 @@ struct FieldsIndex {
     elevation: Option<usize>,
 }
 
-fn parse_header(fields: &FieldsBuilder, header: &mut StringRecord) -> Result<FieldsIndex, String> {
+fn parse_header(fields: &FieldsConfiguration, header: &mut StringRecord) -> Result<FieldsIndex, String> {
     header.trim();
 
     let device = match header
@@ -131,7 +131,7 @@ fn parse_header(fields: &FieldsBuilder, header: &mut StringRecord) -> Result<Fie
 
 fn parse_row(
     header: &FieldsIndex,
-    fields: &FieldsBuilder,
+    fields: &FieldsConfiguration,
     row: &mut StringRecord,
 ) -> Result<Option<DevicePosition>, String> {
     row.trim();
@@ -232,7 +232,7 @@ pub mod tests {
             .from_reader(data.as_bytes());
 
         let source = CsvSource::new(rdr, None);
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
 
         let tracks = SourceToTracks::build(
             source,
@@ -269,7 +269,7 @@ pub mod tests {
             .from_reader(data.as_bytes());
 
         let source = CsvSource::new(rdr, None);
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
 
         let tracks = SourceToTracks::build(
             source,
@@ -299,7 +299,7 @@ pub mod tests {
             .from_reader(data.as_bytes());
 
         let source = CsvSource::new(rdr, None);
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
 
         let tracks = SourceToTracks::build(
             source,
@@ -328,7 +328,7 @@ pub mod tests {
             .from_reader(data.as_bytes());
 
         let source = CsvSource::new(rdr, None);
-        let op = TrackSegmentOptions::new();
+        let op = TrackSegmentOptions::default();
 
         let tracks = SourceToTracks::build(
             source,

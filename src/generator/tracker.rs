@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use serde::Deserialize;
 use geo::SimplifyVwIdx;
 use gpx::{Track, TrackSegment, Waypoint};
 use time::{macros::format_description, OffsetDateTime};
@@ -26,7 +27,7 @@ impl Tracker {
             device,
             name,
             source: None,
-            segment_confs: TrackSegmentOptions::new(),
+            segment_confs: TrackSegmentOptions::default(),
         }
     }
 
@@ -94,34 +95,21 @@ impl Tracker {
 }
 
 /// Segments configurations
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(default)]
 pub struct TrackSegmentOptions {
-    /// Max segment duration in minutes
-    max_duration: u16,
+    /// Max segment duration in seconds
+    pub max_duration: u16,
     /// Tolerance value to simplify with Visvalingam-Whyatt algorithm
-    vw_tolerance: Option<f64>,
+    pub vw_tolerance: Option<f64>,
 }
 
-impl TrackSegmentOptions {
-    pub fn new() -> Self {
+impl Default for TrackSegmentOptions {
+    fn default() -> Self {
         Self {
             max_duration: 300, // 5 minutes
             vw_tolerance: None,
         }
-    }
-
-    /// Enable the simplification with Visvalingam-Whyatt algorithm
-    pub fn simplify_with_vw(&mut self, tolerance: f64) -> &mut Self {
-        self.vw_tolerance = Some(tolerance);
-
-        self
-    }
-
-    /// Max time segment allowed, in seconds
-    pub fn max_segment_secs(&mut self, max: u16) -> &mut Self {
-        self.max_duration = if max < 1 { 1 } else { max };
-
-        self
     }
 }
 
@@ -179,4 +167,30 @@ impl SourceToTracks {
 
         Ok(tracks)
     }
+}
+
+#[test]
+fn parse_track_seg_options() -> Result<(), String> {
+
+    let yaml = "\nmax_duration: 300";
+
+    let tso: TrackSegmentOptions = serde_yaml::from_str(&yaml)
+        .map_err(|e| e.to_string())?;
+
+    assert_eq!(TrackSegmentOptions {
+        max_duration: 300,
+        vw_tolerance: None
+    }, tso);
+
+    let yaml = "\nmax_duration: 300\nvw_tolerance: 0.001";
+
+    let tso: TrackSegmentOptions = serde_yaml::from_str(&yaml)
+        .map_err(|e| e.to_string())?;
+
+    assert_eq!(TrackSegmentOptions {
+        max_duration: 300,
+        vw_tolerance: Some(0.001)
+    }, tso);
+
+    Ok(())
 }
