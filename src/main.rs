@@ -1,15 +1,16 @@
 //! location2gpx cli - GPX generator from many location sources
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::BufWriter;
 
 use bson::{doc, Document};
 use mongodb::sync::Client;
+use serde::Deserialize;
 use time::format_description::well_known;
 use time::OffsetDateTime;
 
 use location2gpx::sources::MongoDbSource;
-use location2gpx::{FieldsBuilder, GpxGenerator, SourceToTracks, TrackSegmentOptions};
+use location2gpx::{FieldsConfiguration, GpxGenerator, SourceToTracks, TrackSegmentOptions};
 
 /// CLI of location2gpx - Convert your raw GPS data into a GPX file
 #[argopt::cmd]
@@ -24,19 +25,8 @@ fn main(
     end: String,
     /// GPX path file destination
     destination: String,
-    #[opt(long)] field_device: Option<String>,
-    #[opt(long)] field_coordinates: Option<String>,
-    #[opt(long)] flip_field_coordinates: Option<bool>,
-    #[opt(long)] field_time: Option<String>,
-    #[opt(long)] field_route: Option<String>,
-    #[opt(long)] field_speed: Option<String>,
-    #[opt(long)] field_elevation: Option<String>,
-    /// Enable the simplify Visvalingam-Whyatt algorithm providing the tolerance
-    #[opt(long)]
-    simplify: Option<f64>,
-    /// Max segment time(in seconds) allowed
-    #[opt(long)]
-    max_seg_time: Option<u16>,
+    /// Fields and segments configuration. Default: .loc2gpx.yaml, ~/.loc2gpx.yaml
+    config: Option<String>,
 ) -> Result<(), String> {
     let start = OffsetDateTime::parse(&start, &well_known::Rfc3339)
         .map_err(|e| format!("Failed on parse the start time: {}", e.to_string()))?;
@@ -53,39 +43,9 @@ fn main(
         .ok_or("Default database not provided")?;
     let collection = db.collection::<Document>(&collection);
 
-    let mut fields = FieldsBuilder::default();
-    if let Some(f) = field_device {
-        fields.device(f);
-    }
-    if let Some(f) = field_coordinates {
-        fields.coordinates(f);
-    }
-    if let Some(f) = field_elevation {
-        fields.elevation(f);
-    }
-    if let Some(f) = field_speed {
-        fields.speed(f);
-    }
-    if let Some(f) = flip_field_coordinates {
-        fields.flip_coordinates(f);
-    }
-    if let Some(f) = field_time {
-        fields.time(f);
-    }
-    if let Some(f) = field_route {
-        fields.route(f);
-    }
+    let (fields, op) = load_configs(config);
 
     let source = MongoDbSource::new(collection, Some(fields));
-
-    let mut op = TrackSegmentOptions::new();
-
-    if let Some(s) = max_seg_time {
-        op.max_segment_secs(s);
-    }
-    if let Some(s) = simplify {
-        op.simplify_with_vw(s);
-    }
 
     let tracks = SourceToTracks::build(source, start, end, op)?;
 
@@ -96,6 +56,99 @@ fn main(
 
     let mut writer = BufWriter::new(destination);
     gpx::write(&doc, &mut writer).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Load the current config
+fn load_configs(provided: Option<String>) -> (FieldsConfiguration, TrackSegmentOptions) {
+    let mut options = vec![];
+
+    if let Some(sprovided) = provided {
+        options.push(sprovided);
+    }
+
+    options.push(".loc2gpx.yaml".to_string());
+
+    if let Some(home) = dirs::home_dir() {
+        if let Some(shome) = home.to_str() {
+            options.push(format!("{}/.loc2gpx.yaml", shome));
+        }
+    }
+
+    let mut yaml: Option<String> = None;
+    for fi in options {
+        if let Ok(s) = fs::read_to_string(fi) {
+            yaml = Some(s);
+            break;
+        }
+    }
+
+    if let Some(s) = yaml {
+        if let Ok(conf) = serde_yaml::from_str::<Configs>(&s) {
+            return (conf.fields, conf.segments);
+        }
+    }
+
+    (
+        FieldsConfiguration::default(),
+        TrackSegmentOptions::default(),
+    )
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+struct Configs {
+    pub fields: FieldsConfiguration,
+    pub segments: TrackSegmentOptions,
+}
+
+#[test]
+fn parse_configs() -> Result<(), String> {
+    let yaml = "\nfields:\nsegments:";
+
+    let tso: Configs = serde_yaml::from_str(&yaml).map_err(|e| e.to_string())?;
+
+    assert_eq!(
+        Configs {
+            fields: FieldsConfiguration {
+                device_id: "device".to_string(),
+                time: "time".to_string(),
+                route: "route".to_string(),
+                coordinates: "coordinates".to_string(),
+                speed: "speed".to_string(),
+                elevation: "elevation".to_string(),
+                flip_coordinates: false,
+            },
+            segments: TrackSegmentOptions {
+                max_duration: 300,
+                vw_tolerance: None
+            }
+        },
+        tso
+    );
+
+    let yaml = "\nfields:\n  device_id: dev_id\nsegments:\n  max_duration: 600";
+
+    let tso: Configs = serde_yaml::from_str(&yaml).map_err(|e| e.to_string())?;
+
+    assert_eq!(
+        Configs {
+            fields: FieldsConfiguration {
+                device_id: "dev_id".to_string(),
+                time: "time".to_string(),
+                route: "route".to_string(),
+                coordinates: "coordinates".to_string(),
+                speed: "speed".to_string(),
+                elevation: "elevation".to_string(),
+                flip_coordinates: false,
+            },
+            segments: TrackSegmentOptions {
+                max_duration: 600,
+                vw_tolerance: None
+            }
+        },
+        tso
+    );
 
     Ok(())
 }
