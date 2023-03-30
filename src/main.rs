@@ -3,18 +3,68 @@
 use std::fs::{self, File};
 use std::io::BufWriter;
 
+use argopt::{cmd_group, subcmd};
 use bson::{doc, Document};
+use csv::Reader;
 use mongodb::sync::Client;
 use serde::Deserialize;
 use time::format_description::well_known;
 use time::OffsetDateTime;
 
-use location2gpx::sources::MongoDbSource;
+use location2gpx::sources::{CsvSource, MongoDbSource};
 use location2gpx::{FieldsConfiguration, GpxGenerator, SourceToTracks, TrackSegmentOptions};
 
 /// CLI of location2gpx - Convert your raw GPS data into a GPX file
-#[argopt::cmd]
-fn main(
+#[cmd_group(commands = [mongo,csv])]
+fn main() -> Result<(), String> {}
+
+/// Generate a GPX from a CSV file source
+#[subcmd]
+fn csv(
+    /// CSV file source
+    csv_path: String,
+    /// Start time, RFC3339 format
+    start: String,
+    /// End time, RFC3339 format
+    end: String,
+    /// GPX path file destination
+    destination: String,
+    /// Fields and segments configuration. Default: .loc2gpx.yaml, ~/.loc2gpx.yaml
+    #[opt(long)]
+    config: Option<String>,
+) -> Result<(), String> {
+    let start = OffsetDateTime::parse(&start, &well_known::Rfc3339)
+        .map_err(|e| format!("Failed on parse the start time: {}", e.to_string()))?;
+    let end = OffsetDateTime::parse(&end, &well_known::Rfc3339)
+        .map_err(|e| format!("Failed on parse the end time: {}", e.to_string()))?;
+
+    let destination = File::create(destination)
+        .map_err(|e| format!("Failed on create the destination file: {}", e.to_string()))?;
+
+    let csv = File::open(csv_path)
+        .map_err(|e| format!("Failed on open the CSV file: {}", e.to_string()))?;
+    let rcsv = Reader::from_reader(csv);
+
+    let (fields, op) = load_configs(config);
+
+    let source = CsvSource::new(rcsv, Some(fields));
+
+    let tracks = SourceToTracks::build(source, start, end, op)?;
+
+    let mut gpx = GpxGenerator::empty();
+    gpx.tracks = tracks;
+
+    let doc = gpx.generate()?;
+
+    let mut writer = BufWriter::new(destination);
+    gpx::write(&doc, &mut writer).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Generate a GPX from a mongodb collection source
+#[subcmd]
+fn mongo(
     /// Mongo connection string source
     connection: String,
     /// Mongo collection name
@@ -26,6 +76,7 @@ fn main(
     /// GPX path file destination
     destination: String,
     /// Fields and segments configuration. Default: .loc2gpx.yaml, ~/.loc2gpx.yaml
+    #[opt(long)]
     config: Option<String>,
 ) -> Result<(), String> {
     let start = OffsetDateTime::parse(&start, &well_known::Rfc3339)
