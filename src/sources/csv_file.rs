@@ -87,7 +87,10 @@ struct FieldsIndex {
     elevation: Option<usize>,
 }
 
-fn parse_header(fields: &FieldsConfiguration, header: &mut StringRecord) -> Result<FieldsIndex, String> {
+fn parse_header(
+    fields: &FieldsConfiguration,
+    header: &mut StringRecord,
+) -> Result<FieldsIndex, String> {
     header.trim();
 
     let device = match header

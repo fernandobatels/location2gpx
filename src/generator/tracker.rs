@@ -2,9 +2,9 @@
 
 use std::collections::BTreeMap;
 
-use serde::Deserialize;
 use geo::SimplifyVwIdx;
 use gpx::{Track, TrackSegment, Waypoint};
+use serde::Deserialize;
 use time::{macros::format_description, OffsetDateTime};
 
 use super::position::{DevicePosition, RawPosition};
@@ -171,26 +171,29 @@ impl SourceToTracks {
 
 #[test]
 fn parse_track_seg_options() -> Result<(), String> {
-
     let yaml = "\nmax_duration: 300";
 
-    let tso: TrackSegmentOptions = serde_yaml::from_str(&yaml)
-        .map_err(|e| e.to_string())?;
+    let tso: TrackSegmentOptions = serde_yaml::from_str(&yaml).map_err(|e| e.to_string())?;
 
-    assert_eq!(TrackSegmentOptions {
-        max_duration: 300,
-        vw_tolerance: None
-    }, tso);
+    assert_eq!(
+        TrackSegmentOptions {
+            max_duration: 300,
+            vw_tolerance: None
+        },
+        tso
+    );
 
     let yaml = "\nmax_duration: 300\nvw_tolerance: 0.001";
 
-    let tso: TrackSegmentOptions = serde_yaml::from_str(&yaml)
-        .map_err(|e| e.to_string())?;
+    let tso: TrackSegmentOptions = serde_yaml::from_str(&yaml).map_err(|e| e.to_string())?;
 
-    assert_eq!(TrackSegmentOptions {
-        max_duration: 300,
-        vw_tolerance: Some(0.001)
-    }, tso);
+    assert_eq!(
+        TrackSegmentOptions {
+            max_duration: 300,
+            vw_tolerance: Some(0.001)
+        },
+        tso
+    );
 
     Ok(())
 }
