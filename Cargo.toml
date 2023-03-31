@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Luis Fernando Batels <luisfbatels@gmail.com>"]
 description = "GPX file generator"
+repository = "https://github.com/fernandobatels/location2gpx"
+keywords = ["gpx", "gps", "location", "geography"]
+categories = ["science::geo"]
+license = "MIT"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

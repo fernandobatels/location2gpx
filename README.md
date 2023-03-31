@@ -1,8 +1,22 @@
 # location2gpx
 
+[![Crate](https://img.shields.io/crates/v/location2gpx.svg)](https://crates.io/crates/location2gpx)
+[![API](https://docs.rs/location2gpx/badge.svg)](https://docs.rs/location2gpx)
+[![github sponsors](https://img.shields.io/github/sponsors/fernandobatels)](https://github.com/sponsors/fernandobatels)
+
 GPX file generator from consolidated sources.
 
 [Visualize](https://www.gpxsee.org/) or [manipulate](https://qgis.org) your tracks with a `.gpx` file from raw data in mongodb collections or CSV.
+
+## How location2gpx works
+
+1. Connect to your source and fetch all the records of provided range
+2. Groups all your positions by a device and route
+  - Each device + route will be a GPX track
+3. Track positions will be split by a maximum time value into GPX track segments
+  - In segment you have all points with elevation, speed and time
+  - If desired, each track segment can be simplified with the Visvalingam-Whyatt algorithm
+4. Your GPX file are ready
 
 ## How to use
 
